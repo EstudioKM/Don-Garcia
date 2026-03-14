@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - master
+      - claude/fix-github-pages-display-R2zB9
   workflow_dispatch:
 
 permissions:
