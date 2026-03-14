@@ -20,7 +20,12 @@ export const getMenuFromDB = async () => {
       return REAL_MENU;
     }
   } catch (error) {
-    console.error("Error fetching menu from Firebase:", error);
+    const errorMessage = error instanceof Error ? error.message : (error as any)?.message || String(error);
+    if (errorMessage.includes('client is offline')) {
+      console.warn("Firebase client is offline. Using local menu data.");
+    } else {
+      console.error("Error fetching menu from Firebase:", error);
+    }
     // Fallback to local data if offline or error
     return REAL_MENU;
   }

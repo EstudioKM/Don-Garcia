@@ -45,7 +45,12 @@ export const getLayout = async (): Promise<Layout> => {
       return DEFAULT_LAYOUT;
     }
   } catch (error) {
-    console.error("Error fetching layout:", error);
+    const errorMessage = error instanceof Error ? error.message : (error as any)?.message || String(error);
+    if (errorMessage.includes('client is offline')) {
+      console.warn("Firebase client is offline. Using default layout.");
+    } else {
+      console.error("Error fetching layout:", error);
+    }
     return DEFAULT_LAYOUT;
   }
 };

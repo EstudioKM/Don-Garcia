@@ -36,7 +36,12 @@ export const getAllReservations = async (): Promise<Reservation[]> => {
         reservations.sort((a, b) => b.date.getTime() - a.date.getTime());
         return reservations;
     } catch (error) {
-        console.error("Error getting all reservations:", error);
+        const errorMessage = error instanceof Error ? error.message : (error as any)?.message || String(error);
+        if (errorMessage.includes('client is offline')) {
+            console.warn("Firebase client is offline. Returning empty reservations list.");
+        } else {
+            console.error("Error getting all reservations:", error);
+        }
         return [];
     }
 };
@@ -63,7 +68,12 @@ export const getReservationsForDate = async (date: Date): Promise<Reservation[]>
         });
         return reservations;
     } catch (error) {
-        console.error("Error getting reservations for date:", error);
+        const errorMessage = error instanceof Error ? error.message : (error as any)?.message || String(error);
+        if (errorMessage.includes('client is offline')) {
+            console.warn("Firebase client is offline. Returning empty reservations for date.");
+        } else {
+            console.error("Error getting reservations for date:", error);
+        }
         return [];
     }
 };

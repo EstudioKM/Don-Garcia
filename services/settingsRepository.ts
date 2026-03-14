@@ -62,7 +62,12 @@ export const getRestaurantSettings = async (): Promise<RestaurantSettings> => {
       return DEFAULT_SETTINGS;
     }
   } catch (error) {
-    console.error("Error fetching restaurant settings:", error);
+    const errorMessage = error instanceof Error ? error.message : (error as any)?.message || String(error);
+    if (errorMessage.includes('client is offline')) {
+      console.warn("Firebase client is offline. Using default restaurant settings.");
+    } else {
+      console.error("Error fetching restaurant settings:", error);
+    }
     return DEFAULT_SETTINGS;
   }
 };

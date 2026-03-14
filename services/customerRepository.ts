@@ -50,38 +50,47 @@ export const findOrCreateCustomer = async (phone: string, name: string, email?: 
         throw new Error("El número de teléfono proporcionado es inválido.");
     }
 
-    const q = query(collection(db, COLLECTION_NAME), where("phone", "==", normalizedPhone));
-    const querySnapshot = await getDocs(q);
+    try {
+        const q = query(collection(db, COLLECTION_NAME), where("phone", "==", normalizedPhone));
+        const querySnapshot = await getDocs(q);
 
-    if (!querySnapshot.empty) {
-        // Cliente encontrado
-        const customerDoc = querySnapshot.docs[0];
-        const customerId = customerDoc.id;
-        
-        // Actualizar datos si son diferentes
-        const updates: Partial<Customer> = { lastSeen: Timestamp.now() };
-        const currentData = customerDoc.data();
-        if (currentData.name !== name) updates.name = name;
-        if (email && currentData.email !== email) updates.email = email;
+        if (!querySnapshot.empty) {
+            // Cliente encontrado
+            const customerDoc = querySnapshot.docs[0];
+            const customerId = customerDoc.id;
+            
+            // Actualizar datos si son diferentes
+            const updates: Partial<Customer> = { lastSeen: Timestamp.now() };
+            const currentData = customerDoc.data();
+            if (currentData.name !== name) updates.name = name;
+            if (email && currentData.email !== email) updates.email = email;
 
-        await updateDoc(doc(db, COLLECTION_NAME, customerId), updates);
-        return customerId;
-    } else {
-        // Cliente no encontrado, crear uno nuevo
-        const newCustomerData = {
-            phone: normalizedPhone,
-            name,
-            email: email || '',
-            reservationIds: [],
-            firstSeen: Timestamp.now(),
-            lastSeen: Timestamp.now(),
-            notes: '',
-            tags: '',
-            dietaryRestrictions: [],
-            reducedMobility: false,
-        };
-        const docRef = await addDoc(collection(db, COLLECTION_NAME), newCustomerData);
-        return docRef.id;
+            await updateDoc(doc(db, COLLECTION_NAME, customerId), updates);
+            return customerId;
+        } else {
+            // Cliente no encontrado, crear uno nuevo
+            const newCustomerData = {
+                phone: normalizedPhone,
+                name,
+                email: email || '',
+                reservationIds: [],
+                firstSeen: Timestamp.now(),
+                lastSeen: Timestamp.now(),
+                notes: '',
+                tags: '',
+                dietaryRestrictions: [],
+                reducedMobility: false,
+            };
+            const docRef = await addDoc(collection(db, COLLECTION_NAME), newCustomerData);
+            return docRef.id;
+        }
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : (error as any)?.message || String(error);
+        if (errorMessage.includes('client is offline')) {
+            console.warn("Firebase client is offline. Cannot find or create customer.");
+            throw new Error("No se puede conectar con la base de datos (offline).");
+        }
+        throw error;
     }
 };
 
@@ -190,7 +199,12 @@ export const getReservationsForCustomer = async (customerId: string): Promise<Re
         reservations.sort((a, b) => b.date.getTime() - a.date.getTime());
         return reservations;
     } catch (error) {
-        console.error("Error getting reservations for customer:", error);
+        const errorMessage = error instanceof Error ? error.message : (error as any)?.message || String(error);
+        if (errorMessage.includes('client is offline')) {
+            console.warn("Firebase client is offline. Returning empty reservations for customer.");
+        } else {
+            console.error("Error getting reservations for customer:", error);
+        }
         return [];
     }
 };

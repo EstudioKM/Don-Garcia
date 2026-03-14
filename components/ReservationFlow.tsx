@@ -98,7 +98,7 @@ const Calendar: React.FC<{
 
   const calendarDays = [];
   for (let i = 0; i < startDay; i++) {
-    calendarDays.push(<div key={`empty-${i}`} className="h-12" />);
+    calendarDays.push(<div key={`empty-${i}`} className="aspect-square w-full" />);
   }
   
   for (let day = 1; day <= totalDays; day++) {
@@ -111,7 +111,7 @@ const Calendar: React.FC<{
         key={day}
         disabled={disabled}
         onClick={() => onSelect(dateStr)}
-        className={`h-10 sm:h-14 w-full flex flex-col items-center justify-center rounded-xl text-xs sm:text-sm font-bold transition-all relative ${
+        className={`aspect-square w-full flex flex-col items-center justify-center rounded-2xl text-sm sm:text-base font-bold transition-all relative ${
           isSelected 
           ? 'bg-white/10 border-2 border-gold text-white shadow-lg z-10' 
           : disabled 
@@ -121,34 +121,34 @@ const Calendar: React.FC<{
       >
         <span>{day}</span>
         {!disabled && (
-          <div className="w-1 h-1 rounded-full bg-emerald-500 mt-0.5 sm:mt-1 shadow-[0_0_5px_rgba(16,185,129,0.5)]"></div>
+          <div className="w-1 h-1 rounded-full bg-emerald-500 mt-1 shadow-[0_0_5px_rgba(16,185,129,0.5)]"></div>
         )}
       </button>
     );
   }
 
   return (
-    <div className="bg-stone-900/30 rounded-3xl border border-white/5 p-4 sm:p-6 space-y-4 sm:space-y-6 shadow-2xl">
-      <div className="flex items-center justify-between mb-2">
+    <div className="bg-[#0a0a0a] rounded-[2rem] border border-white/5 p-6 sm:p-8 space-y-6 shadow-2xl max-w-lg mx-auto w-full">
+      <div className="flex items-center justify-between mb-4">
         <button onClick={handlePrevMonth} className="p-2 text-stone-500 hover:text-white transition-colors">
-          <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+          <ChevronLeft className="w-6 h-6" />
         </button>
-        <h3 className="text-lg sm:text-xl font-serif text-white tracking-tight">{monthNames[month]} {year}</h3>
+        <h3 className="text-xl sm:text-2xl font-serif text-white tracking-tight font-bold">{monthNames[month]} {year}</h3>
         <button onClick={handleNextMonth} className="p-2 text-stone-500 hover:text-white transition-colors">
-          <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
+          <ChevronRight className="w-6 h-6" />
         </button>
       </div>
       
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-2 sm:gap-3">
         {dayNames.map(d => (
-          <div key={d} className="h-6 sm:h-8 flex items-center justify-center text-[9px] sm:text-[10px] uppercase tracking-widest text-stone-600 font-bold">
+          <div key={d} className="flex items-center justify-center text-[10px] sm:text-xs uppercase tracking-widest text-stone-500 font-bold mb-2">
             {d}
           </div>
         ))}
         {calendarDays}
       </div>
       
-      <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 pt-6 border-t border-white/5">
+      <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 pt-6 border-t border-white/10 hidden">
         <div className="flex items-center space-x-2">
           <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
           <span className="text-[9px] uppercase tracking-[0.2em] text-stone-500 font-bold">Hay lugar</span>
@@ -168,6 +168,7 @@ const Calendar: React.FC<{
 
 const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange }) => {
   const [step, setStep] = useState<Step>('welcome');
+  const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -448,42 +449,53 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
               settings={settings}
               onSelect={(date) => {
                 setFormData(prev => ({ ...prev, date, shift: '', time: '' }));
+                setIsShiftModalOpen(true);
               }}
             />
 
             <AnimatePresence>
-              {formData.date && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="space-y-4"
-                >
-                  <p className="text-center text-stone-400 uppercase tracking-widest text-xs font-bold">Turnos Disponibles</p>
-                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                    {availableShifts.length > 0 ? (
-                      availableShifts.map(s => (
-                        <button
-                          key={s.value}
-                          onClick={() => {
-                            setFormData(prev => ({ ...prev, shift: s.value as any }));
-                            nextStep();
-                          }}
-                          className={`py-4 sm:py-6 rounded-2xl border-2 text-lg sm:text-xl font-bold transition-all ${
-                            formData.shift === s.value 
-                            ? 'bg-gold border-gold text-white shadow-lg' 
-                            : 'bg-stone-900 border-stone-800 text-stone-400 hover:border-gold/50'
-                          }`}
-                        >
-                          {s.label}
-                        </button>
-                      ))
-                    ) : (
-                      <div className="col-span-2 p-8 bg-red-500/10 border border-red-500/30 rounded-2xl text-center">
-                        <p className="text-red-400">Lo sentimos, estamos cerrados este día.</p>
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
+              {isShiftModalOpen && formData.date && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                    className="bg-stone-900 border border-white/10 rounded-3xl p-6 w-full max-w-sm shadow-2xl"
+                  >
+                    <div className="flex justify-between items-center mb-6">
+                      <h3 className="text-xl font-serif text-white">Turnos Disponibles</h3>
+                      <button onClick={() => setIsShiftModalOpen(false)} className="text-stone-400 hover:text-white transition-colors">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                      </button>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 gap-3">
+                      {availableShifts.length > 0 ? (
+                        availableShifts.map(s => (
+                          <button
+                            key={s.value}
+                            onClick={() => {
+                              setFormData(prev => ({ ...prev, shift: s.value as any }));
+                              setIsShiftModalOpen(false);
+                              nextStep();
+                            }}
+                            className={`py-4 rounded-2xl border-2 text-lg font-bold transition-all ${
+                              formData.shift === s.value 
+                              ? 'bg-gold border-gold text-white shadow-lg' 
+                              : 'bg-stone-800 border-stone-700 text-stone-300 hover:border-gold/50'
+                            }`}
+                          >
+                            {s.label}
+                          </button>
+                        ))
+                      ) : (
+                        <div className="p-6 bg-red-500/10 border border-red-500/30 rounded-2xl text-center">
+                          <p className="text-red-400">Lo sentimos, estamos cerrados este día.</p>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                </div>
               )}
             </AnimatePresence>
           </motion.div>

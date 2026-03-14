@@ -232,7 +232,12 @@ export const seedCustomers = async () => {
             // console.log(`${sampleCustomers.length} sample customers created successfully.`);
         }
     } catch (error) {
-        console.error("Error seeding customers database:", error);
+        const errorMessage = error instanceof Error ? error.message : (error as any)?.message || String(error);
+        if (errorMessage.includes('client is offline')) {
+            console.warn("Firebase client is offline. Skipping customer seeding.");
+        } else {
+            console.error("Error seeding customers database:", error);
+        }
     }
 };
 
@@ -251,7 +256,12 @@ export const seedReservations = async () => {
       // console.log("10 reservas de ejemplo creadas exitosamente.");
     }
   } catch (error) {
-      console.error("Error al semear la base de datos de reservas:", error);
+      const errorMessage = error instanceof Error ? error.message : (error as any)?.message || String(error);
+      if (errorMessage.includes('client is offline')) {
+          console.warn("Firebase client is offline. Skipping reservation seeding.");
+      } else {
+          console.error("Error al semear la base de datos de reservas:", error);
+      }
   }
 };
 

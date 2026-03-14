@@ -16,7 +16,12 @@ export const getInProgressOrder = async (tableId: string): Promise<OrderItem[]> 
     }
     return [];
   } catch (error) {
-    console.error("Error fetching in-progress order:", error);
+    const errorMessage = error instanceof Error ? error.message : (error as any)?.message || String(error);
+    if (errorMessage.includes('client is offline')) {
+      console.warn("Firebase client is offline. Returning empty in-progress order.");
+    } else {
+      console.error("Error fetching in-progress order:", error);
+    }
     return [];
   }
 };
