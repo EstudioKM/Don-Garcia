@@ -60,9 +60,19 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
   const handlePrint = () => { window.print(); };
 
   const handlePrintList = (title: string, reservationsToPrint: Reservation[]) => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-        alert('Por favor, habilite las ventanas emergentes para imprimir la lista.');
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'absolute';
+    iframe.style.width = '0px';
+    iframe.style.height = '0px';
+    iframe.style.border = 'none';
+    document.body.appendChild(iframe);
+
+    const printWindow = iframe.contentWindow;
+    const printDocument = printWindow?.document;
+
+    if (!printWindow || !printDocument) {
+        alert('No se pudo generar la vista de impresión.');
+        document.body.removeChild(iframe);
         return;
     }
 
@@ -94,15 +104,21 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
     }).join('');
 
     const content = `
+        <!DOCTYPE html>
         <html>
             <head>
                 <title>Listado de Reservas - ${title}</title>
                 <style>
-                    body { font-family: sans-serif; margin: 20px; }
+                    body { font-family: sans-serif; margin: 20px; color: black; background: white; }
                     h1, h2 { font-family: serif; }
-                    table { width: 100%; border-collapse: collapse; }
-                    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-                    th { background-color: #f2f2f2; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                    th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
+                    th { background-color: #f2f2f2; font-weight: bold; }
+                    @media print {
+                        body { margin: 0; padding: 20px; }
+                        table { page-break-inside: auto; }
+                        tr { page-break-inside: avoid; page-break-after: auto; }
+                    }
                 </style>
             </head>
             <body>
@@ -119,18 +135,28 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
                         </tr>
                     </thead>
                     <tbody>
-                        ${tableRows.length > 0 ? tableRows : '<tr><td colspan="5">No hay reservas para este turno.</td></tr>'}
+                        ${tableRows.length > 0 ? tableRows : '<tr><td colspan="5" style="text-align: center; font-style: italic;">No hay reservas para este turno.</td></tr>'}
                     </tbody>
                 </table>
+                <script>
+                    window.onload = function() {
+                        window.print();
+                    }
+                </script>
             </body>
         </html>
     `;
 
-    printWindow.document.write(content);
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
-    printWindow.close();
+    printDocument.open();
+    printDocument.write(content);
+    printDocument.close();
+
+    // Remove the iframe after printing is done or cancelled
+    setTimeout(() => {
+        if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe);
+        }
+    }, 2000);
   };
 
   const openNewReservationModal = () => { setEditingReservation({ date: selectedDate, time: '20:30', status: 'pendiente', guests: 2, environmentId: layout?.environments[0]?.id }); setIsModalOpen(true); };

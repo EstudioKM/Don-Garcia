@@ -197,8 +197,8 @@ const ReservationModal: React.FC<ReservationModalProps> = ({ isOpen, onClose, re
     });
 
     const totalGuestsForShift = reservationsForShift
-        .filter(r => r.id !== formData.id && r.status === 'confirmada')
-        .reduce((sum, r) => sum + r.guests, 0);
+        .filter(r => r.id !== formData.id && r.status !== 'cancelada')
+        .reduce((sum, r) => sum + Number(r.guests), 0);
 
     if (totalGuestsForShift + Number(formData.guests) > totalLayoutCapacity) {
         setCapacityError(`El turno de la ${shiftKey} está completo. Capacidad: ${totalLayoutCapacity}, Reservados: ${totalGuestsForShift}.`);
@@ -210,8 +210,8 @@ const ReservationModal: React.FC<ReservationModalProps> = ({ isOpen, onClose, re
     
     if (selectedEnv) {
         const guestsInSelectedEnvForShift = reservationsForShift
-            .filter(r => r.id !== formData.id && r.environmentId === formData.environmentId && r.status === 'confirmada')
-            .reduce((sum, r) => sum + r.guests, 0);
+            .filter(r => r.id !== formData.id && r.environmentId === formData.environmentId && r.status !== 'cancelada')
+            .reduce((sum, r) => sum + Number(r.guests), 0);
 
         if (guestsInSelectedEnvForShift + Number(formData.guests) > selectedEnv.maxCapacity) {
             setCapacityError(`El ambiente "${selectedEnv.name}" tiene una capacidad máxima de ${selectedEnv.maxCapacity} cubiertos para este turno. Ocupación actual: ${guestsInSelectedEnvForShift}.`);

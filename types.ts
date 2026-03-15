@@ -85,6 +85,7 @@ export interface Environment {
   tables: Table[];
   maxCapacity: number;
   image?: string;
+  description?: string;
 }
 
 export interface Layout {

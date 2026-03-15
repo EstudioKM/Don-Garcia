@@ -36,7 +36,7 @@ const AdminLayout: React.FC = () => {
     }
   };
 
-  const handleEnvironmentChange = (envIndex: number, field: 'name' | 'maxCapacity', value: string | number) => {
+  const handleEnvironmentChange = (envIndex: number, field: 'name' | 'maxCapacity' | 'image' | 'description', value: string | number) => {
     if (!layout) return;
     const nextState = produce(layout, draftState => {
       if (field === 'maxCapacity') {
@@ -186,8 +186,29 @@ const AdminLayout: React.FC = () => {
                     placeholder="Nombre del ambiente"
                   />
                 </div>
+
+                <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                  <div className="space-y-1">
+                    <label className="text-[9px] uppercase tracking-widest text-stone-500 font-bold">URL de Imagen</label>
+                    <input 
+                      value={env.image || ''} 
+                      onChange={e => handleEnvironmentChange(envIndex, 'image', e.target.value)} 
+                      className="w-full bg-stone-950 text-stone-300 py-1.5 px-3 rounded-lg border border-stone-800 focus:border-gold outline-none text-xs"
+                      placeholder="https://images.unsplash.com/..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] uppercase tracking-widest text-stone-500 font-bold">Descripción</label>
+                    <input 
+                      value={env.description || ''} 
+                      onChange={e => handleEnvironmentChange(envIndex, 'description', e.target.value)} 
+                      className="w-full bg-stone-950 text-stone-300 py-1.5 px-3 rounded-lg border border-stone-800 focus:border-gold outline-none text-xs"
+                      placeholder="Breve descripción del ambiente..."
+                    />
+                  </div>
+                </div>
                 
-                <div className="flex items-center gap-6">
+                <div className="flex items-center gap-6 mt-4 md:mt-0">
                   <div className="flex items-center gap-3">
                     <div className="flex flex-col items-end">
                       <label className="text-[9px] uppercase tracking-widest text-stone-500 font-bold">Capacidad Máx.</label>

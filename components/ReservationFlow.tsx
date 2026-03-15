@@ -12,7 +12,10 @@ import {
   CheckCircle2,
   AlertCircle,
   Info,
-  ChevronDown
+  ChevronDown,
+  X,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { createReservation, getReservationsForDate } from '../services/reservationRepository';
 import { findOrCreateCustomer } from '../services/customerRepository';
@@ -115,12 +118,12 @@ const Calendar: React.FC<{
         key={day}
         disabled={disabled}
         onClick={() => onSelect(dateStr)}
-        className={`aspect-square w-full flex flex-col items-center justify-center rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold transition-all relative ${
+        className={`aspect-square w-full flex flex-col items-center justify-center rounded-xl sm:rounded-2xl text-base sm:text-lg font-bold transition-all relative ${
           isSelected 
-          ? 'bg-gold text-black shadow-[0_0_20px_rgba(176,141,72,0.4)] z-10' 
+          ? 'bg-gold text-black shadow-[0_0_25px_rgba(176,141,72,0.5)] z-10' 
           : disabled 
-            ? 'text-stone-800 cursor-not-allowed opacity-30' 
-            : 'text-stone-400 hover:bg-white/5 hover:text-white'
+            ? 'text-stone-800 cursor-not-allowed opacity-20' 
+            : 'text-stone-200 hover:bg-white/10 hover:text-white'
         }`}
       >
         <span>{day}</span>
@@ -152,7 +155,7 @@ const Calendar: React.FC<{
       
       <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
         {dayNames.map(d => (
-          <div key={d} className="flex items-center justify-center text-[8px] uppercase tracking-[0.2em] text-stone-600 font-bold mb-1">
+          <div key={d} className="flex items-center justify-center text-[8px] uppercase tracking-[0.2em] text-stone-500 font-bold mb-1">
             {d}
           </div>
         ))}
@@ -185,6 +188,28 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reservationId, setReservationId] = useState<string | null>(null);
+  const [selectedEnvForModal, setSelectedEnvForModal] = useState<Environment | null>(null);
+  const [showOccasionOptions, setShowOccasionOptions] = useState(false);
+  const [dateReservations, setDateReservations] = useState<Reservation[]>([]);
+  const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
+
+  useEffect(() => {
+    if (formData.date) {
+      const fetchReservations = async () => {
+        setIsCheckingAvailability(true);
+        try {
+          const dateObj = new Date(formData.date + 'T00:00:00-03:00');
+          const res = await getReservationsForDate(dateObj);
+          setDateReservations(res);
+        } catch (error) {
+          console.error("Error fetching reservations:", error);
+        } finally {
+          setIsCheckingAvailability(false);
+        }
+      };
+      fetchReservations();
+    }
+  }, [formData.date]);
 
   // Load initial data
   useEffect(() => {
@@ -219,6 +244,10 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
   };
 
   const prevStep = () => {
+    if (step === 'occasion' && showOccasionOptions) {
+      setShowOccasionOptions(false);
+      return;
+    }
     const steps: Step[] = ['welcome', 'guests', 'date', 'time', 'sector', 'occasion', 'preferences', 'notes', 'name', 'phone', 'confirming', 'success'];
     const currentIndex = steps.indexOf(step);
     if (currentIndex > 0) {
@@ -264,29 +293,44 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
   const filteredEnvironments = useMemo(() => {
     if (!layout || !settings || !formData.date || !formData.shift) return layout?.environments || [];
     
+    let activeEnvs = layout.environments;
+
     // Check special days first
     const specialDay = settings.specialDays?.find(sd => sd.date === formData.date);
     if (specialDay) {
       const activeEnvIds = specialDay.shifts[formData.shift as 'mediodia' | 'noche'].activeEnvironments;
       if (activeEnvIds && activeEnvIds.length > 0) {
-        return layout.environments.filter(env => activeEnvIds.includes(env.id));
+        activeEnvs = layout.environments.filter(env => activeEnvIds.includes(env.id));
       }
-      return layout.environments;
+    } else {
+      const dateObj = new Date(formData.date + 'T00:00:00-03:00');
+      const dayIndex = dateObj.getUTCDay();
+      const dayKeys = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+      const dayKey = dayKeys[dayIndex] as keyof RestaurantSettings['days'];
+      const daySettings = settings.days[dayKey];
+      
+      const activeEnvIds = daySettings.shifts[formData.shift as 'mediodia' | 'noche'].activeEnvironments;
+      if (activeEnvIds && activeEnvIds.length > 0) {
+        activeEnvs = layout.environments.filter(env => activeEnvIds.includes(env.id));
+      }
     }
 
-    const dateObj = new Date(formData.date + 'T00:00:00-03:00');
-    const dayIndex = dateObj.getUTCDay();
-    const dayKeys = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
-    const dayKey = dayKeys[dayIndex] as keyof RestaurantSettings['days'];
-    const daySettings = settings.days[dayKey];
-    
-    const activeEnvIds = daySettings.shifts[formData.shift as 'mediodia' | 'noche'].activeEnvironments;
-    if (activeEnvIds && activeEnvIds.length > 0) {
-      return layout.environments.filter(env => activeEnvIds.includes(env.id));
-    }
-    
-    return layout.environments;
-  }, [layout, settings, formData.date, formData.shift]);
+    // Filter by capacity
+    const shiftKey = formData.shift as 'mediodia' | 'noche';
+    const reservationsForShift = dateReservations.filter(r => {
+        const hour = parseInt(r.time.split(':')[0]);
+        return shiftKey === 'mediodia' ? hour < 16 : hour >= 16;
+    });
+
+    return activeEnvs.filter(env => {
+        const guestsInEnv = reservationsForShift
+            .filter(r => r.environmentId === env.id && r.status !== 'cancelada')
+            .reduce((sum, r) => sum + Number(r.guests), 0);
+        
+        return (guestsInEnv + Number(formData.guests)) <= env.maxCapacity;
+    });
+
+  }, [layout, settings, formData.date, formData.shift, formData.guests, dateReservations]);
 
   const handleFinalSubmit = async () => {
     setStep('confirming');
@@ -298,7 +342,7 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
       
       // --- CAPACITY CHECK ---
       const reservationsOnDate = await getReservationsForDate(reservationDate);
-      const confirmedReservations = reservationsOnDate.filter(r => r.status === 'confirmada');
+      const confirmedReservations = reservationsOnDate.filter(r => r.status !== 'cancelada');
       
       const dayIndex = reservationDate.getUTCDay();
       const dayKeys = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
@@ -325,7 +369,7 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
           return shiftKey === 'mediodia' ? hour < 16 : hour >= 16;
       });
 
-      const totalGuestsForShift = reservationsForShift.reduce((sum, r) => sum + r.guests, 0);
+      const totalGuestsForShift = reservationsForShift.reduce((sum, r) => sum + Number(r.guests), 0);
 
       if (totalGuestsForShift + Number(formData.guests) > totalLayoutCapacity) {
           setError(`Disculpe, el turno de la ${shiftKey === 'mediodia' ? 'mediodía' : 'noche'} está completo para la fecha seleccionada.`);
@@ -339,10 +383,10 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
 
       const guestsInSelectedEnvForShift = reservationsForShift
           .filter(r => r.environmentId === formData.environmentId)
-          .reduce((sum, r) => sum + r.guests, 0);
+          .reduce((sum, r) => sum + Number(r.guests), 0);
 
       if (guestsInSelectedEnvForShift + Number(formData.guests) > selectedEnv.maxCapacity) {
-          setError(`Disculpe, no hay suficiente disponibilidad en "${selectedEnv.name}" para la cantidad de personas seleccionada.`);
+          setError(`Disculpe, no hay suficiente disponibilidad en "${selectedEnv.name}" para la cantidad de personas seleccionada en este turno.`);
           setStep('sector');
           onSubmittingChange(false);
           return;
@@ -418,32 +462,34 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 1.02 }}
-            className="flex flex-col items-center text-center space-y-6 py-2"
+            className="flex flex-col items-center text-center space-y-8 py-4"
           >
-            <div className="relative w-full aspect-[4/3] rounded-[2rem] overflow-hidden shadow-2xl group">
+            <div className="flex flex-col items-center mb-4">
+              <h1 className="text-4xl font-serif text-gold tracking-[0.2em] font-bold leading-none">DON GARCÍA</h1>
+              <p className="text-stone-500 text-[10px] uppercase tracking-[0.4em] mt-2 font-medium">La Casona 1930</p>
+            </div>
+
+            <div className="relative w-full aspect-[4/3] rounded-[2.5rem] overflow-hidden shadow-2xl group border border-white/5">
               <img 
                 src="https://images.unsplash.com/photo-1579532582937-16c108930bf6?auto=format&fit=crop&q=80&w=1000" 
                 alt="Don Garcia" 
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent flex flex-col justify-end p-6">
-                <span className="text-gold text-[8px] uppercase tracking-[0.5em] font-bold mb-2">La Casona 1930</span>
-                <h2 className="text-3xl font-serif text-white leading-tight tracking-tight">Don García</h2>
-              </div>
+              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
             </div>
             
-            <div className="space-y-3 px-4">
-              <p className="text-stone-500 text-sm leading-relaxed font-light italic">
+            <div className="space-y-4 px-6">
+              <p className="text-stone-400 text-lg leading-relaxed font-serif italic">
                 "Una experiencia gastronómica única frente al río Paraná, donde la historia se encuentra con el sabor."
               </p>
             </div>
 
             <button 
               onClick={nextStep}
-              className="w-full bg-gold text-black py-4 rounded-xl font-bold text-base shadow-[0_10px_30px_rgba(176,141,72,0.2)] flex items-center justify-center space-x-2 active:scale-95 transition-all"
+              className="w-full bg-gold text-black py-5 rounded-2xl font-bold text-lg shadow-[0_15px_40px_rgba(176,141,72,0.25)] flex items-center justify-center space-x-3 active:scale-[0.98] transition-all hover:bg-white hover:text-black"
             >
-              <span>Comenzar Reserva</span>
-              <ChevronRight className="w-4 h-4" />
+              <span>Reservar una Mesa</span>
+              <ChevronRight className="w-5 h-5" />
             </button>
           </motion.div>
         );
@@ -451,17 +497,21 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
       case 'guests':
         return (
           <motion.div 
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="flex flex-col h-full justify-center space-y-6"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -30 }}
+            className="flex flex-col h-full justify-center space-y-8 max-w-2xl mx-auto w-full px-4"
           >
-            <div className="text-center space-y-2">
-              <span className="text-gold text-[9px] uppercase tracking-[0.3em] font-bold">Comensales</span>
-              <h2 className="text-3xl font-serif text-white">¿Cuántos son?</h2>
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3 text-gold">
+                <span className="text-sm font-bold">1</span>
+                <ChevronRight className="w-4 h-4" />
+                <span className="text-[10px] uppercase tracking-[0.3em] font-bold">Comensales</span>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-serif text-white leading-tight">¿Cuántos son?</h2>
             </div>
             
-            <div className="grid grid-cols-4 gap-2.5">
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => (
                 <button
                   key={n}
@@ -469,10 +519,10 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
                     setFormData(prev => ({ ...prev, guests: n }));
                     nextStep();
                   }}
-                  className={`aspect-square rounded-xl border transition-all text-lg font-bold flex items-center justify-center ${
+                  className={`aspect-square rounded-2xl border transition-all text-2xl font-bold flex items-center justify-center group ${
                     formData.guests === n 
-                    ? 'bg-gold text-black border-gold shadow-[0_0_20px_rgba(176,141,72,0.3)] scale-105 z-10' 
-                    : 'bg-stone-900/30 border-white/5 text-stone-600 hover:border-white/10'
+                    ? 'bg-gold text-black border-gold shadow-[0_0_30px_rgba(176,141,72,0.3)] scale-105 z-10' 
+                    : 'bg-stone-900/30 border-white/10 text-stone-300 hover:border-white/30 hover:bg-white/5'
                   }`}
                 >
                   {n}
@@ -485,24 +535,30 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
       case 'date':
         return (
           <motion.div 
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="flex flex-col h-full justify-center space-y-6"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -30 }}
+            className="flex flex-col h-full justify-center space-y-8 max-w-2xl mx-auto w-full px-4"
           >
-            <div className="text-center space-y-2">
-              <span className="text-gold text-[9px] uppercase tracking-[0.3em] font-bold">Calendario</span>
-              <h2 className="text-3xl font-serif text-white">¿Qué día nos visita?</h2>
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3 text-gold">
+                <span className="text-sm font-bold">2</span>
+                <ChevronRight className="w-4 h-4" />
+                <span className="text-[10px] uppercase tracking-[0.3em] font-bold">Calendario</span>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-serif text-white leading-tight">¿Qué día nos visita?</h2>
             </div>
 
-            <Calendar 
-              selectedDate={formData.date}
-              settings={settings}
-              onSelect={(date) => {
-                setFormData(prev => ({ ...prev, date, shift: '', time: '' }));
-                setIsShiftModalOpen(true);
-              }}
-            />
+            <div className="w-full max-w-lg mx-auto">
+              <Calendar 
+                selectedDate={formData.date}
+                settings={settings}
+                onSelect={(date) => {
+                  setFormData(prev => ({ ...prev, date, shift: '', time: '' }));
+                  setIsShiftModalOpen(true);
+                }}
+              />
+            </div>
 
             <AnimatePresence>
               {isShiftModalOpen && formData.date && (
@@ -511,16 +567,16 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
                     initial={{ opacity: 0, scale: 0.95, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                    className="bg-stone-900 border border-white/10 rounded-3xl p-6 w-full max-w-sm shadow-2xl"
+                    className="bg-stone-900 border border-white/10 rounded-[2rem] p-8 w-full max-w-sm shadow-2xl"
                   >
-                    <div className="flex justify-between items-center mb-6">
-                      <h3 className="text-xl font-serif text-white">Turnos Disponibles</h3>
+                    <div className="flex justify-between items-center mb-8">
+                      <h3 className="text-2xl font-serif text-white">Turnos Disponibles</h3>
                       <button onClick={() => setIsShiftModalOpen(false)} className="text-stone-400 hover:text-white transition-colors">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        <X className="w-6 h-6" />
                       </button>
                     </div>
                     
-                    <div className="grid grid-cols-1 gap-3">
+                    <div className="grid grid-cols-1 gap-4">
                       {availableShifts.length > 0 ? (
                         availableShifts.map(s => (
                           <button
@@ -530,13 +586,14 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
                               setIsShiftModalOpen(false);
                               nextStep();
                             }}
-                            className={`py-3 rounded-2xl border-2 text-base sm:text-lg font-bold transition-all ${
+                            className={`py-4 rounded-2xl border-2 text-lg font-bold transition-all flex items-center justify-center space-x-3 group ${
                               formData.shift === s.value 
-                              ? 'bg-gold border-gold text-white shadow-lg' 
-                              : 'bg-stone-800 border-stone-700 text-stone-300 hover:border-gold/50'
+                              ? 'bg-gold border-gold text-black shadow-lg' 
+                              : 'bg-stone-800/50 border-stone-700 text-stone-300 hover:border-gold/50 hover:bg-white/5'
                             }`}
                           >
-                            {s.label}
+                            {s.value === 'mediodia' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                            <span>{s.label}</span>
                           </button>
                         ))
                       ) : (
@@ -555,17 +612,21 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
       case 'time':
         return (
           <motion.div 
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="flex flex-col h-full justify-center space-y-6"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -30 }}
+            className="flex flex-col h-full justify-center space-y-8 max-w-2xl mx-auto w-full px-4"
           >
-            <div className="text-center space-y-2">
-              <span className="text-gold text-[9px] uppercase tracking-[0.3em] font-bold">Horario</span>
-              <h2 className="text-3xl font-serif text-white">¿A qué hora?</h2>
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3 text-gold">
+                <span className="text-sm font-bold">3</span>
+                <ChevronRight className="w-4 h-4" />
+                <span className="text-[10px] uppercase tracking-[0.3em] font-bold">Horario</span>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-serif text-white leading-tight">¿A qué hora?</h2>
             </div>
 
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {availableTimes.map(t => (
                 <button
                   key={t}
@@ -573,10 +634,10 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
                     setFormData(prev => ({ ...prev, time: t }));
                     nextStep();
                   }}
-                  className={`py-4 rounded-xl border transition-all text-lg font-bold ${
+                  className={`py-5 rounded-2xl border transition-all text-xl font-bold flex items-center justify-center group ${
                     formData.time === t 
-                    ? 'bg-gold text-black border-gold shadow-[0_0_20px_rgba(176,141,72,0.3)]' 
-                    : 'bg-stone-900/30 border-white/5 text-stone-600 hover:border-white/10'
+                    ? 'bg-gold text-black border-gold shadow-[0_0_30px_rgba(176,141,72,0.3)] scale-105 z-10' 
+                    : 'bg-stone-900/30 border-white/10 text-stone-300 hover:border-white/30 hover:bg-white/5'
                   }`}
                 >
                   {t}
@@ -589,113 +650,230 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
       case 'sector':
         return (
           <motion.div 
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="flex flex-col h-full justify-center space-y-6"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -30 }}
+            className="flex flex-col h-full justify-center space-y-8 max-w-2xl mx-auto w-full px-4"
           >
-            <div className="text-center space-y-2">
-              <span className="text-gold text-[9px] uppercase tracking-[0.3em] font-bold">Ambiente</span>
-              <h2 className="text-2xl font-serif text-white">¿Dónde prefiere sentarse?</h2>
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3 text-gold">
+                <span className="text-sm font-bold">4</span>
+                <ChevronRight className="w-4 h-4" />
+                <span className="text-[10px] uppercase tracking-[0.3em] font-bold">Ambiente</span>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-serif text-white leading-tight">¿Dónde prefiere sentarse?</h2>
             </div>
 
-            <div className="grid grid-cols-1 gap-3">
-              {filteredEnvironments.map(env => (
+            {isCheckingAvailability ? (
+              <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+                <p className="text-stone-400 text-sm uppercase tracking-widest">Verificando disponibilidad...</p>
+              </div>
+            ) : filteredEnvironments.length === 0 ? (
+              <div className="bg-stone-900/50 border border-red-500/30 rounded-[2rem] p-8 text-center space-y-6">
+                <AlertCircle className="w-12 h-12 text-red-400 mx-auto opacity-80" />
+                <div>
+                  <h3 className="text-xl font-serif text-white mb-2">Sin disponibilidad</h3>
+                  <p className="text-stone-400 text-sm">
+                    Lo sentimos, no contamos con espacios disponibles para {formData.guests} comensales el {formData.date} a las {formData.time}hs.
+                  </p>
+                </div>
                 <button
-                  key={env.id}
-                  onClick={() => {
-                    setFormData(prev => ({ ...prev, environmentId: env.id }));
-                    nextStep();
-                  }}
-                  className={`w-full overflow-hidden rounded-2xl border transition-all text-left relative group ${
-                    formData.environmentId === env.id 
-                    ? 'border-gold shadow-xl' 
-                    : 'border-white/5 hover:border-white/10'
-                  }`}
+                  onClick={() => setStep('date')}
+                  className="px-8 py-4 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all text-sm uppercase tracking-widest font-bold border border-white/10"
                 >
-                  <div className="h-24 sm:h-28 relative">
-                    <img 
-                      src={env.image || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=600"} 
-                      alt={env.name}
-                      className="w-full h-full object-cover opacity-40 group-hover:opacity-60 transition-opacity"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-r from-black via-black/60 to-transparent flex flex-col justify-center p-5">
-                      <h3 className="text-lg font-serif text-white">{env.name}</h3>
-                      <p className="text-stone-500 text-[8px] uppercase tracking-widest font-bold">Capacidad: {env.maxCapacity}p</p>
-                    </div>
-                    {formData.environmentId === env.id && (
-                      <div className="absolute top-1/2 -translate-y-1/2 right-5 text-gold">
-                        <CheckCircle2 className="w-6 h-6" />
-                      </div>
-                    )}
-                  </div>
+                  Seleccionar otra fecha
                 </button>
-              ))}
-            </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {filteredEnvironments.map(env => (
+                  <div key={env.id} className="relative group">
+                    <button
+                      onClick={() => {
+                        setFormData(prev => ({ ...prev, environmentId: env.id }));
+                        nextStep();
+                      }}
+                      className={`w-full overflow-hidden rounded-[2rem] border transition-all text-left relative ${
+                        formData.environmentId === env.id 
+                        ? 'border-gold shadow-[0_0_30px_rgba(176,141,72,0.3)] scale-[1.02] z-10' 
+                        : 'border-white/10 hover:border-white/30 bg-stone-900/30'
+                      }`}
+                    >
+                      <div className="h-40 sm:h-48 relative">
+                        <img 
+                          src={env.image || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=600"} 
+                          alt={env.name}
+                          className="w-full h-full object-cover opacity-50 group-hover:opacity-70 transition-opacity"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-6">
+                          <h3 className="text-2xl font-serif text-white mb-2">{env.name}</h3>
+                          <p className="text-stone-300 text-[10px] uppercase tracking-widest font-bold">Capacidad: {env.maxCapacity}p</p>
+                        </div>
+                        {formData.environmentId === env.id && (
+                          <div className="absolute top-4 right-4 text-gold bg-black/50 rounded-full p-1 backdrop-blur-sm">
+                            <CheckCircle2 className="w-6 h-6" />
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                    
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedEnvForModal(env);
+                      }}
+                      className="absolute top-4 right-4 p-2.5 bg-black/50 backdrop-blur-md rounded-full text-white/70 hover:text-gold hover:bg-black/80 transition-all border border-white/10 z-20"
+                      title="Ver detalles"
+                    >
+                      <Info className="w-5 h-5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Modal de Detalles de Ambiente */}
+            <AnimatePresence>
+              {selectedEnvForModal && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                    className="bg-stone-900 border border-white/10 rounded-[2.5rem] overflow-hidden w-full max-w-lg shadow-2xl"
+                  >
+                    <div className="relative aspect-video">
+                      <img 
+                        src={selectedEnvForModal.image || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=800"} 
+                        alt={selectedEnvForModal.name}
+                        className="w-full h-full object-cover"
+                      />
+                      <button 
+                        onClick={() => setSelectedEnvForModal(null)}
+                        className="absolute top-4 right-4 p-2 bg-black/50 backdrop-blur-md rounded-full text-white hover:text-gold transition-colors"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                    <div className="p-8 space-y-6">
+                      <div className="flex justify-between items-end">
+                        <h3 className="text-3xl font-serif text-white">{selectedEnvForModal.name}</h3>
+                        <span className="text-gold text-[10px] uppercase tracking-widest font-bold mb-1">Capacidad: {selectedEnvForModal.maxCapacity}p</span>
+                      </div>
+                      <div className="h-px bg-gradient-to-r from-gold/50 to-transparent w-full" />
+                      <p className="text-stone-400 text-lg leading-relaxed font-light">
+                        {selectedEnvForModal.description || "Un espacio diseñado para brindar la máxima comodidad y una atmósfera inigualable durante su visita."}
+                      </p>
+                      <button 
+                        onClick={() => {
+                          setFormData(prev => ({ ...prev, environmentId: selectedEnvForModal.id }));
+                          setSelectedEnvForModal(null);
+                          nextStep();
+                        }}
+                        className="w-full bg-gold text-black py-4 rounded-2xl font-bold text-lg mt-4 hover:bg-white transition-colors"
+                      >
+                        Seleccionar este ambiente
+                      </button>
+                    </div>
+                  </motion.div>
+                </div>
+              )}
+            </AnimatePresence>
           </motion.div>
         );
 
       case 'occasion':
         return (
           <motion.div 
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="flex flex-col h-full justify-center space-y-6"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -30 }}
+            className="flex flex-col h-full justify-center space-y-8 max-w-2xl mx-auto w-full px-4"
           >
-            <div className="text-center space-y-2">
-              <span className="text-gold text-[9px] uppercase tracking-[0.3em] font-bold">Celebración</span>
-              <h2 className="text-2xl font-serif text-white leading-tight">¿Venís por alguna ocasión especial?</h2>
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3 text-gold">
+                <span className="text-sm font-bold">5</span>
+                <ChevronRight className="w-4 h-4" />
+                <span className="text-[10px] uppercase tracking-[0.3em] font-bold">Celebración</span>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-serif text-white leading-tight">¿Venís por alguna ocasión especial?</h2>
             </div>
 
-            <div className="grid grid-cols-1 gap-2.5">
-              {['Aniversario', 'Cumpleaños', 'Reunión Empresarial'].map(option => (
+            {!showOccasionOptions ? (
+              <div className="flex flex-col space-y-3">
                 <button
-                  key={option}
+                  onClick={() => setShowOccasionOptions(true)}
+                  className="w-full py-5 px-6 rounded-2xl border border-white/10 bg-stone-900/30 text-white text-xl font-medium hover:bg-white/5 hover:border-white/30 transition-all flex items-center justify-between group"
+                >
+                  <span>Sí, es una ocasión especial</span>
+                  <span className="text-stone-500 text-sm group-hover:text-gold transition-colors font-bold">A</span>
+                </button>
+                <button
                   onClick={() => {
-                    setFormData(prev => ({ ...prev, occasion: option }));
+                    setFormData(prev => ({ ...prev, occasion: '' }));
                     nextStep();
                   }}
-                  className={`py-3.5 px-5 rounded-xl border transition-all text-left flex items-center justify-between ${
-                    formData.occasion === option 
-                    ? 'bg-gold/10 border-gold text-white shadow-[0_0_15px_rgba(176,141,72,0.1)]' 
-                    : 'bg-stone-900/30 border-white/5 text-stone-500 hover:border-white/10'
-                  }`}
+                  className="w-full py-5 px-6 rounded-2xl border border-white/10 bg-stone-900/30 text-white text-xl font-medium hover:bg-white/5 hover:border-white/30 transition-all flex items-center justify-between group"
                 >
-                  <span className="font-medium text-sm">{option}</span>
-                  {formData.occasion === option && <CheckCircle2 className="w-4 h-4 text-gold" />}
+                  <span>No, es una visita normal</span>
+                  <span className="text-stone-500 text-sm group-hover:text-gold transition-colors font-bold">B</span>
                 </button>
-              ))}
-              <button
-                onClick={() => {
-                  setFormData(prev => ({ ...prev, occasion: '' }));
-                  nextStep();
-                }}
-                className="py-3 text-stone-600 text-center text-xs font-medium hover:text-stone-400 transition-colors"
+              </div>
+            ) : (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="space-y-6"
               >
-                Sin motivo especial
-              </button>
-            </div>
+                <p className="text-stone-400 text-lg">¡Qué bueno! ¿Qué celebramos?</p>
+                <div className="grid grid-cols-1 gap-3">
+                  {['Aniversario', 'Cumpleaños', 'Reunión Empresarial', 'Cita Romántica'].map((option, idx) => (
+                    <button
+                      key={option}
+                      onClick={() => {
+                        setFormData(prev => ({ ...prev, occasion: option }));
+                        nextStep();
+                      }}
+                      className={`w-full py-5 px-6 rounded-2xl border transition-all text-left flex items-center justify-between group ${
+                        formData.occasion === option 
+                        ? 'bg-gold text-black border-gold shadow-[0_0_30px_rgba(176,141,72,0.3)] scale-[1.02] z-10' 
+                        : 'bg-stone-900/30 border-white/10 text-stone-300 hover:border-white/30 hover:bg-white/5'
+                      }`}
+                    >
+                      <span className="font-medium text-xl">{option}</span>
+                      <span className={`text-sm font-bold transition-colors ${formData.occasion === option ? 'text-black/50' : 'text-stone-500 group-hover:text-gold'}`}>
+                        {idx + 1}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
           </motion.div>
         );
 
       case 'preferences':
         return (
           <motion.div 
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="flex flex-col h-full justify-center space-y-6"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -30 }}
+            className="flex flex-col h-full justify-center space-y-8 max-w-2xl mx-auto w-full px-4"
           >
-            <div className="text-center space-y-2">
-              <span className="text-gold text-[9px] uppercase tracking-[0.3em] font-bold">Preferencias</span>
-              <h2 className="text-2xl font-serif text-white leading-tight">Detalles de la visita</h2>
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3 text-gold">
+                <span className="text-sm font-bold">6</span>
+                <ChevronRight className="w-4 h-4" />
+                <span className="text-[10px] uppercase tracking-[0.3em] font-bold">Preferencias</span>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-serif text-white leading-tight">Detalles de la visita</h2>
             </div>
 
-            <div className="space-y-5">
-              <div className="space-y-2.5">
-                <p className="text-[8px] uppercase tracking-widest text-stone-600 font-bold ml-1">Restricciones Alimenticias</p>
-                <div className="flex flex-wrap gap-1.5">
+            <div className="space-y-8">
+              <div className="space-y-4">
+                <p className="text-sm uppercase tracking-widest text-stone-400 font-bold ml-1">Restricciones Alimenticias</p>
+                <div className="flex flex-wrap gap-3">
                   {['Sin TACC', 'Vegetariano', 'Vegano'].map(option => (
                     <button
                       key={option}
@@ -707,10 +885,10 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
                             : [...prev.dietaryRestrictions, option]
                         }));
                       }}
-                      className={`px-3 py-1.5 text-[10px] rounded-full border transition-all ${
+                      className={`px-5 py-3 text-sm rounded-full border transition-all ${
                         formData.dietaryRestrictions.includes(option) 
-                        ? 'bg-gold text-black border-gold font-bold' 
-                        : 'bg-stone-900/30 border-white/5 text-stone-500'
+                        ? 'bg-gold text-black border-gold font-bold shadow-lg' 
+                        : 'bg-stone-900/30 border-white/10 text-stone-300 hover:border-white/30 hover:bg-white/5'
                       }`}
                     >
                       {option}
@@ -719,38 +897,38 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
                 </div>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <button
                   onClick={() => setFormData(prev => ({ ...prev, hasChildren: !prev.hasChildren }))}
-                  className={`w-full flex items-center justify-between p-3.5 rounded-xl border transition-all ${
-                    formData.hasChildren ? 'bg-white/5 border-gold/40' : 'bg-stone-900/30 border-white/5'
+                  className={`w-full flex items-center justify-between p-5 rounded-2xl border transition-all group ${
+                    formData.hasChildren ? 'bg-white/5 border-gold/40' : 'bg-stone-900/30 border-white/10 hover:border-white/30 hover:bg-white/5'
                   }`}
                 >
-                  <span className="text-stone-400 text-xs font-medium">Asistiremos con niños</span>
-                  <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${formData.hasChildren ? 'bg-gold border-gold' : 'border-stone-800'}`}>
-                    {formData.hasChildren && <CheckCircle2 className="w-3 h-3 text-black" />}
+                  <span className="text-stone-200 text-lg font-medium">Asistiremos con niños</span>
+                  <div className={`w-6 h-6 rounded border flex items-center justify-center transition-colors ${formData.hasChildren ? 'bg-gold border-gold' : 'border-stone-600 group-hover:border-stone-400'}`}>
+                    {formData.hasChildren && <CheckCircle2 className="w-4 h-4 text-black" />}
                   </div>
                 </button>
 
                 <button
                   onClick={() => setFormData(prev => ({ ...prev, reducedMobility: !prev.reducedMobility }))}
-                  className={`w-full flex items-center justify-between p-3.5 rounded-xl border transition-all ${
-                    formData.reducedMobility ? 'bg-white/5 border-gold/40' : 'bg-stone-900/30 border-white/5'
+                  className={`w-full flex items-center justify-between p-5 rounded-2xl border transition-all group ${
+                    formData.reducedMobility ? 'bg-white/5 border-gold/40' : 'bg-stone-900/30 border-white/10 hover:border-white/30 hover:bg-white/5'
                   }`}
                 >
-                  <span className="text-stone-400 text-xs font-medium">Acceso movilidad reducida</span>
-                  <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${formData.reducedMobility ? 'bg-gold border-gold' : 'border-stone-800'}`}>
-                    {formData.reducedMobility && <CheckCircle2 className="w-3 h-3 text-black" />}
+                  <span className="text-stone-200 text-lg font-medium">Acceso movilidad reducida</span>
+                  <div className={`w-6 h-6 rounded border flex items-center justify-center transition-colors ${formData.reducedMobility ? 'bg-gold border-gold' : 'border-stone-600 group-hover:border-stone-400'}`}>
+                    {formData.reducedMobility && <CheckCircle2 className="w-4 h-4 text-black" />}
                   </div>
                 </button>
               </div>
 
               <button 
                 onClick={nextStep}
-                className="w-full bg-gold text-black py-3.5 rounded-xl font-bold text-base shadow-lg flex items-center justify-center space-x-2 transition-all active:scale-95"
+                className="w-full bg-gold text-black py-5 rounded-2xl font-bold text-lg shadow-lg flex items-center justify-center space-x-3 transition-all hover:bg-white active:scale-95"
               >
                 <span>Continuar</span>
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-5 h-5" />
               </button>
             </div>
           </motion.div>
@@ -759,30 +937,34 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
       case 'notes':
         return (
           <motion.div 
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="flex flex-col h-full justify-center space-y-6"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -30 }}
+            className="flex flex-col h-full justify-center space-y-8 max-w-2xl mx-auto w-full px-4"
           >
-            <div className="text-center space-y-2">
-              <span className="text-gold text-[9px] uppercase tracking-[0.3em] font-bold">Comentarios</span>
-              <h2 className="text-2xl font-serif text-white leading-tight">¿Algo más que debamos saber?</h2>
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3 text-gold">
+                <span className="text-sm font-bold">7</span>
+                <ChevronRight className="w-4 h-4" />
+                <span className="text-[10px] uppercase tracking-[0.3em] font-bold">Comentarios</span>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-serif text-white leading-tight">¿Algo más que debamos saber?</h2>
             </div>
 
-            <div className="space-y-5">
+            <div className="space-y-6">
               <textarea 
                 value={formData.specialRequests} 
                 onChange={e => setFormData({...formData, specialRequests: e.target.value})} 
                 placeholder="Ej: Mesa cerca de la ventana, alergias específicas, etc." 
-                className="w-full bg-stone-900/30 border border-white/10 py-4 px-5 rounded-2xl focus:border-gold outline-none h-32 resize-none text-white placeholder:text-stone-800 text-base transition-all"
+                className="w-full bg-stone-900/30 border border-white/20 py-5 px-6 rounded-2xl focus:border-gold outline-none h-40 resize-none text-white placeholder:text-stone-500 text-lg transition-all"
               />
 
               <button 
                 onClick={nextStep}
-                className="w-full bg-gold text-black py-3.5 rounded-xl font-bold text-base shadow-lg flex items-center justify-center space-x-2 transition-all active:scale-95"
+                className="w-full bg-gold text-black py-5 rounded-2xl font-bold text-lg shadow-lg flex items-center justify-center space-x-3 transition-all hover:bg-white active:scale-95"
               >
                 <span>Siguiente</span>
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-5 h-5" />
               </button>
             </div>
           </motion.div>
@@ -791,35 +973,39 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
       case 'name':
         return (
           <motion.div 
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="flex flex-col h-full justify-center space-y-8"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -30 }}
+            className="flex flex-col h-full justify-center space-y-8 max-w-2xl mx-auto w-full px-4"
           >
-            <div className="text-center space-y-2">
-              <span className="text-gold text-[9px] uppercase tracking-[0.3em] font-bold">Identificación</span>
-              <h2 className="text-3xl font-serif text-white">¿A nombre de quién?</h2>
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3 text-gold">
+                <span className="text-sm font-bold">8</span>
+                <ChevronRight className="w-4 h-4" />
+                <span className="text-[10px] uppercase tracking-[0.3em] font-bold">Identificación</span>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-serif text-white leading-tight">¿A nombre de quién?</h2>
             </div>
 
             <div className="space-y-6">
-              <div className="bg-stone-900/30 p-5 rounded-2xl border border-white/5 focus-within:border-gold transition-colors">
+              <div className="bg-stone-900/30 p-6 rounded-2xl border border-white/10 focus-within:border-gold transition-colors shadow-2xl">
                 <input 
                   autoFocus
                   type="text" 
                   value={formData.name}
                   onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                   placeholder="Nombre completo"
-                  className="w-full bg-transparent text-white text-xl outline-none font-serif placeholder:text-stone-800"
+                  className="w-full bg-transparent text-white text-2xl outline-none font-serif placeholder:text-stone-600"
                 />
               </div>
 
               <button 
                 disabled={!formData.name.trim()}
                 onClick={nextStep}
-                className="w-full bg-gold text-black py-3.5 rounded-xl font-bold text-base shadow-lg flex items-center justify-center space-x-2 disabled:opacity-30 transition-all active:scale-95"
+                className="w-full bg-gold text-black py-5 rounded-2xl font-bold text-lg shadow-lg flex items-center justify-center space-x-3 disabled:opacity-30 transition-all hover:bg-white active:scale-95"
               >
                 <span>Siguiente</span>
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-5 h-5" />
               </button>
             </div>
           </motion.div>
@@ -828,45 +1014,49 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
       case 'phone':
         return (
           <motion.div 
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="flex flex-col h-full justify-center space-y-8"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -30 }}
+            className="flex flex-col h-full justify-center space-y-8 max-w-2xl mx-auto w-full px-4"
           >
-            <div className="text-center space-y-2">
-              <span className="text-gold text-[9px] uppercase tracking-[0.3em] font-bold">Contacto</span>
-              <h2 className="text-3xl font-serif text-white">Su número</h2>
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3 text-gold">
+                <span className="text-sm font-bold">9</span>
+                <ChevronRight className="w-4 h-4" />
+                <span className="text-[10px] uppercase tracking-[0.3em] font-bold">Contacto</span>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-serif text-white leading-tight">Su número</h2>
             </div>
 
             <div className="space-y-6">
-              <div className="bg-stone-900/30 p-5 rounded-2xl border border-white/5 focus-within:border-gold transition-colors">
-                <div className="flex items-center space-x-3">
-                  <Phone className="w-5 h-5 text-gold" />
+              <div className="bg-stone-900/30 p-6 rounded-2xl border border-white/10 focus-within:border-gold transition-colors shadow-2xl">
+                <div className="flex items-center space-x-4">
+                  <Phone className="w-6 h-6 text-gold" />
                   <input 
                     autoFocus
                     type="tel" 
                     value={formData.phone}
                     onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
                     placeholder="Ej: 342 4066887"
-                    className="w-full bg-transparent text-white text-xl outline-none font-bold placeholder:text-stone-800"
+                    className="w-full bg-transparent text-white text-2xl outline-none font-bold placeholder:text-stone-600"
                   />
                 </div>
               </div>
 
               {error && (
-                <div className="p-3 bg-red-500/5 border border-red-500/20 rounded-xl flex items-center space-x-2 text-red-400">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                  <p className="text-[10px]">{error}</p>
+                <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-2xl flex items-center space-x-3 text-red-400">
+                  <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                  <p className="text-sm font-medium">{error}</p>
                 </div>
               )}
 
               <button 
                 disabled={!formData.phone.trim()}
                 onClick={handleFinalSubmit}
-                className="w-full bg-gold text-black py-3.5 rounded-xl font-bold text-base shadow-lg flex items-center justify-center space-x-2 disabled:opacity-30 transition-all active:scale-95"
+                className="w-full bg-gold text-black py-5 rounded-2xl font-bold text-lg shadow-lg flex items-center justify-center space-x-3 disabled:opacity-30 transition-all hover:bg-white active:scale-95"
               >
                 <span>Finalizar Reserva</span>
-                <CheckCircle2 className="w-4 h-4" />
+                <CheckCircle2 className="w-5 h-5" />
               </button>
             </div>
           </motion.div>
@@ -874,58 +1064,63 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
 
       case 'confirming':
         return (
-          <div className="flex flex-col items-center justify-center h-full space-y-6 text-center py-10">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex flex-col items-center justify-center h-full space-y-8 text-center"
+          >
             <div className="relative">
-              <div className="w-20 h-20 border-2 border-gold/20 rounded-full"></div>
-              <div className="absolute inset-0 w-20 h-20 border-t-2 border-gold rounded-full animate-spin"></div>
+              <div className="w-24 h-24 border-2 border-gold/20 rounded-full"></div>
+              <div className="absolute inset-0 w-24 h-24 border-t-2 border-gold rounded-full animate-spin"></div>
             </div>
-            <div className="space-y-2">
-              <h2 className="text-2xl font-serif text-white">Confirmando...</h2>
-              <p className="text-stone-600 text-xs uppercase tracking-widest">Estamos preparando su mesa</p>
+            <div className="space-y-3">
+              <h2 className="text-3xl font-serif text-white">Confirmando...</h2>
+              <p className="text-stone-400 text-sm uppercase tracking-[0.2em] font-bold">Estamos preparando su mesa</p>
             </div>
-          </div>
+          </motion.div>
         );
 
       case 'success':
         return (
           <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="flex flex-col items-center text-center space-y-6 py-4"
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="flex flex-col items-center text-center justify-center h-full space-y-10 max-w-2xl mx-auto w-full px-4"
           >
-            <div className="w-24 h-24 bg-gold rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(176,141,72,0.3)]">
-              <CheckCircle2 className="w-12 h-12 text-black" />
+            <div className="w-32 h-32 bg-gold rounded-full flex items-center justify-center shadow-[0_0_60px_rgba(176,141,72,0.4)]">
+              <CheckCircle2 className="w-16 h-16 text-black" />
             </div>
             
-            <div className="space-y-2">
-              <h2 className="text-3xl font-serif text-white">¡Reserva Exitosa!</h2>
-              <p className="text-stone-500 text-sm px-4">
-                Gracias {formData.name}, lo esperamos el {new Date(formData.date + 'T00:00:00-03:00').toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })} a las {formData.time} hs.
+            <div className="space-y-4">
+              <h2 className="text-4xl sm:text-5xl font-serif text-white leading-tight">¡Reserva Exitosa!</h2>
+              <p className="text-stone-300 text-lg px-4 max-w-md mx-auto">
+                Gracias <span className="text-white font-bold">{formData.name}</span>, lo esperamos el <span className="text-gold font-bold">{new Date(formData.date + 'T00:00:00-03:00').toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}</span> a las <span className="text-gold font-bold">{formData.time} hs</span>.
               </p>
             </div>
 
-            <div className="w-full bg-stone-900/50 p-5 rounded-3xl border border-white/5 space-y-3 text-left">
-              <div className="flex justify-between items-center border-b border-white/5 pb-2.5">
-                <span className="text-stone-600 text-[10px] uppercase tracking-widest font-bold">Código</span>
-                <span className="text-gold font-mono font-bold">{reservationId?.slice(-6).toUpperCase()}</span>
+            <div className="w-full bg-stone-900/40 p-8 rounded-3xl border border-white/10 space-y-5 text-left shadow-2xl">
+              <div className="flex justify-between items-center border-b border-white/10 pb-4">
+                <span className="text-stone-400 text-xs uppercase tracking-[0.2em] font-bold">Código</span>
+                <span className="text-gold font-mono font-bold text-lg">{reservationId?.slice(-6).toUpperCase()}</span>
               </div>
-              <div className="flex justify-between items-center border-b border-white/5 pb-2.5">
-                <span className="text-stone-600 text-[10px] uppercase tracking-widest font-bold">Ambiente</span>
-                <span className="text-white font-bold text-sm text-right ml-4">{layout?.environments.find(e => e.id === formData.environmentId)?.name}</span>
+              <div className="flex justify-between items-center border-b border-white/10 pb-4">
+                <span className="text-stone-400 text-xs uppercase tracking-[0.2em] font-bold">Ambiente</span>
+                <span className="text-white font-bold text-base text-right ml-4">{layout?.environments.find(e => e.id === formData.environmentId)?.name}</span>
               </div>
-              <div className="flex justify-between items-center border-b border-white/5 pb-2.5">
-                <span className="text-stone-600 text-[10px] uppercase tracking-widest font-bold">Personas</span>
-                <span className="text-white font-bold text-sm">{formData.guests} {formData.hasChildren && <span className="text-stone-500 text-[10px] font-normal ml-1">(con niños)</span>}</span>
+              <div className="flex justify-between items-center border-b border-white/10 pb-4">
+                <span className="text-stone-400 text-xs uppercase tracking-[0.2em] font-bold">Personas</span>
+                <span className="text-white font-bold text-base">{formData.guests} {formData.hasChildren && <span className="text-stone-500 text-xs font-normal ml-2">(con niños)</span>}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-stone-600 text-[10px] uppercase tracking-widest font-bold">Motivo</span>
-                <span className="text-white font-bold text-sm text-right ml-4">{formData.occasion || 'Cena casual'}</span>
+                <span className="text-stone-400 text-xs uppercase tracking-[0.2em] font-bold">Motivo</span>
+                <span className="text-white font-bold text-base text-right ml-4">{formData.occasion || 'Cena casual'}</span>
               </div>
             </div>
 
             <button 
               onClick={() => window.location.hash = '/'}
-              className="w-full bg-stone-800 text-white py-4 rounded-xl font-bold text-base hover:bg-stone-700 transition-colors active:scale-95"
+              className="w-full bg-stone-800 text-white py-5 rounded-2xl font-bold text-lg hover:bg-stone-700 transition-colors active:scale-95 shadow-lg"
             >
               Volver al Inicio
             </button>
@@ -941,10 +1136,29 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
   const showSummary = step !== 'welcome' && step !== 'confirming' && step !== 'success';
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full relative">
+      {/* Botón Volver (solo si no es el primer paso o éxito) */}
+      {step !== 'welcome' && step !== 'success' && step !== 'confirming' && (
+        <button 
+          onClick={prevStep}
+          className="absolute -top-10 left-0 flex items-center space-x-2 text-stone-500 hover:text-gold transition-colors group z-50"
+        >
+          <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+          <span className="text-[10px] uppercase tracking-widest font-bold">Volver</span>
+        </button>
+      )}
+
       <div className="flex-grow">
         <AnimatePresence mode="wait">
-          {renderStep()}
+          <motion.div
+            key={step}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.3 }}
+          >
+            {renderStep()}
+          </motion.div>
         </AnimatePresence>
       </div>
 
@@ -958,7 +1172,7 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
             <div className="flex items-center space-x-3">
               <button 
                 onClick={prevStep}
-                className="w-9 h-9 flex-shrink-0 rounded-full bg-white/5 flex items-center justify-center text-stone-500 hover:text-white transition-colors border border-white/5 active:scale-90"
+                className="w-9 h-9 flex-shrink-0 rounded-full bg-white/5 flex items-center justify-center text-stone-400 hover:text-white transition-colors border border-white/5 active:scale-90"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
