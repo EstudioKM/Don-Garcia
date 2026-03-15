@@ -6,7 +6,7 @@ import { Reservation, Layout, RestaurantSettings } from '../../types';
 import ReservationModal from './ReservationModal';
 import { getRestaurantSettings } from '../../services/settingsRepository';
 import { getArgentinaTime } from '../../utils/dateUtils';
-import { ChevronLeft, ChevronRight, Calendar, Plus, Printer } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, Plus, Printer, Users, Edit2, Trash2, AlertCircle, Info } from 'lucide-react';
 
 interface AdminReservationsProps {
   preselectedDate?: Date;
@@ -363,23 +363,23 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
   if (!modalRoot) return null;
   
   const renderReservationList = (title: string, shiftReservations: Reservation[]) => (
-     <div>
-        <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-serif text-white border-l-2 border-white/50 pl-3">{title}</h3>
-            <button onClick={() => handlePrintList(title, shiftReservations)} className="no-print text-stone-500 hover:text-gold transition-colors p-1.5" title={`Imprimir listado de ${title}`}>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+    <div className="bg-stone-900/10 rounded-lg border border-stone-800/30 overflow-hidden">
+        <div className="flex justify-between items-center p-4 bg-stone-900/40 border-b border-stone-800/50">
+            <h3 className="text-xl font-serif text-white border-l-4 border-gold pl-4 leading-none">{title}</h3>
+            <button onClick={() => handlePrintList(title, shiftReservations)} className="no-print text-stone-500 hover:text-gold transition-colors p-2 rounded-full hover:bg-gold/10" title={`Imprimir listado de ${title}`}>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
             </button>
         </div>
-        <div className="w-full overflow-hidden rounded-sm border border-stone-800/50 bg-stone-900/20">
+        <div className="w-full overflow-hidden">
           <table className="w-full text-left printable-table border-collapse">
-            <thead className="bg-stone-900 no-print">
-                <tr className="bg-stone-900/80 backdrop-blur-sm border-b border-stone-800">
-                    <th className="p-2 text-[10px] uppercase tracking-widest text-gold">Hora</th>
-                    <th className="p-2 text-[10px] uppercase tracking-widest text-gold">Nombre</th>
-                    <th className="p-2 text-[10px] uppercase tracking-widest text-gold hidden sm:table-cell">Cub.</th>
-                    <th className="p-2 text-[10px] uppercase tracking-widest text-gold hidden md:table-cell">Ambiente</th>
-                    <th className="p-2 text-[10px] uppercase tracking-widest text-gold">Notas</th>
-                    <th className="p-2 text-[10px] uppercase tracking-widest text-gold no-print text-right">Acciones</th>
+            <thead className="bg-stone-900/80 no-print">
+                <tr className="backdrop-blur-sm border-b border-stone-800">
+                    <th className="p-3 text-xs uppercase tracking-[0.2em] text-gold font-bold">Hora</th>
+                    <th className="p-3 text-xs uppercase tracking-[0.2em] text-gold font-bold">Nombre</th>
+                    <th className="p-3 text-xs uppercase tracking-[0.2em] text-gold font-bold hidden sm:table-cell text-center">Cub.</th>
+                    <th className="p-3 text-xs uppercase tracking-[0.2em] text-gold font-bold hidden md:table-cell">Ambiente</th>
+                    <th className="p-3 text-xs uppercase tracking-[0.2em] text-gold font-bold">Notas</th>
+                    <th className="p-3 text-xs uppercase tracking-[0.2em] text-gold font-bold no-print text-right">Acciones</th>
                 </tr>
             </thead>
             <tbody className="divide-y divide-stone-800/50">
@@ -387,11 +387,11 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
                 const isCancelled = r.status === 'cancelada';
                 const hasSpecialNotes = !isCancelled && (r.specialRequests || (r.dietaryRestrictions && r.dietaryRestrictions.length > 0) || r.reducedMobility || r.hasChildren || r.occasion);
                 return (
-                  <tr key={r.id} className={`transition-colors text-xs ${isCancelled ? 'bg-stone-900/30 opacity-60' : 'hover:bg-stone-800/30'}`}>
-                    <td className={`p-2 font-mono font-bold ${isCancelled ? 'text-stone-600 line-through' : 'text-white'}`}>{r.time}</td>
-                    <td className={`p-2 ${isCancelled ? 'text-stone-600 line-through' : 'text-stone-300'}`}>
+                  <tr key={r.id} className={`transition-colors text-sm ${isCancelled ? 'bg-stone-900/30 opacity-60' : 'hover:bg-stone-800/30'}`}>
+                    <td className={`p-3 font-mono font-bold text-base ${isCancelled ? 'text-stone-600 line-through' : 'text-gold'}`}>{r.time}</td>
+                    <td className={`p-3 ${isCancelled ? 'text-stone-600 line-through' : 'text-stone-300'}`}>
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold">{r.name}</span>
+                        <span className="font-bold text-stone-100">{r.name}</span>
                         {hasSpecialNotes && 
                             <svg className="w-3 h-3 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
                                 <title>Esta reserva tiene notas especiales</title>
@@ -406,14 +406,14 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
                         )}
                       </div>
                     </td>
-                    <td className={`p-2 hidden sm:table-cell ${isCancelled ? 'text-stone-600 line-through' : 'text-stone-300'}`}>{r.guests}</td>
-                    <td className={`p-2 hidden md:table-cell ${isCancelled ? 'text-stone-600 line-through' : 'text-stone-400'}`}>
+                    <td className={`p-3 hidden sm:table-cell text-center font-mono font-bold text-base ${isCancelled ? 'text-stone-600 line-through' : 'text-stone-200'}`}>{r.guests}</td>
+                    <td className={`p-3 hidden md:table-cell ${isCancelled ? 'text-stone-600 line-through' : 'text-stone-400'}`}>
                       <div className="flex flex-col leading-tight">
-                        <span className="text-[11px]">{r.environmentName || 'N/A'}</span>
-                        {r.tableName && <span className="text-[9px] text-gold font-bold">{r.tableName}</span>}
+                        <span className="text-xs font-medium">{r.environmentName || 'N/A'}</span>
+                        {r.tableName && <span className="text-[10px] text-gold font-bold uppercase tracking-widest">{r.tableName}</span>}
                       </div>
                     </td>
-                    <td className={`p-2 text-[10px] italic leading-tight ${isCancelled ? 'text-stone-700 line-through' : 'text-stone-500'}`}>
+                    <td className={`p-3 text-xs italic leading-relaxed ${isCancelled ? 'text-stone-700 line-through' : 'text-stone-500'}`}>
                       {(() => {
                         const notes = [];
                         if (r.specialRequests) notes.push(r.specialRequests);
@@ -424,10 +424,10 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
                         return notes.length > 0 ? notes.join(' | ') : '-';
                       })()}
                     </td>
-                    <td className="p-2 text-right no-print">
-                      <div className="flex items-center justify-end gap-1">
-                          <button onClick={() => openEditReservationModal(r)} className="text-stone-500 hover:text-gold p-1 transition-colors" title="Editar reserva"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
-                          <button onClick={(e) => { e.stopPropagation(); setConfirmingDelete(r); }} className="text-stone-500 hover:text-red-500 p-1 transition-colors" title="Eliminar reserva"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                    <td className="p-3 text-right no-print">
+                      <div className="flex items-center justify-end gap-2">
+                          <button onClick={() => openEditReservationModal(r)} className="text-stone-500 hover:text-gold p-2 transition-colors rounded-lg hover:bg-gold/10" title="Editar reserva"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
+                          <button onClick={(e) => { e.stopPropagation(); setConfirmingDelete(r); }} className="text-stone-500 hover:text-red-500 p-2 transition-colors rounded-lg hover:bg-red-500/10" title="Eliminar reserva"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
                       </div>
                     </td>
                   </tr>
@@ -435,7 +435,12 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
               })}
             </tbody>
           </table>
-           {shiftReservations.length === 0 && <p className="text-center text-stone-600 p-6 italic text-sm">No hay reservas para este turno.</p>}
+           {shiftReservations.length === 0 && (
+             <div className="flex flex-col items-center justify-center p-12 text-stone-600 italic">
+               <svg className="w-8 h-8 mb-2 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+               <p className="text-sm">No hay reservas registradas para este turno.</p>
+             </div>
+           )}
         </div>
       </div>
   );
@@ -464,84 +469,71 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
               const envImage = env.image || `https://picsum.photos/seed/${env.name}/400/200?blur=2`;
    
               return (
-                <div key={env.id} className="group bg-stone-900/20 rounded-lg border border-stone-800/50 overflow-hidden">
+                <div key={env.id} className="group bg-stone-900/30 rounded-xl border border-stone-800/60 overflow-hidden transition-all hover:border-stone-700 hover:bg-stone-900/50">
                   <div 
-                    className={`flex items-center gap-4 p-3 cursor-pointer transition-all hover:bg-stone-800/30 ${isExpanded ? 'bg-stone-800/20' : ''}`}
+                    className={`flex items-center gap-6 p-5 cursor-pointer transition-all ${isExpanded ? 'bg-stone-800/20' : ''}`}
                     onClick={() => toggleEnvExpand(env.id, shiftKey)}
                   >
-                    <div className="w-40 h-24 rounded overflow-hidden flex-shrink-0 border border-stone-700">
-                        <img src={envImage} alt={env.name} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" referrerPolicy="no-referrer" />
+                    <div className="w-32 h-20 rounded-lg overflow-hidden flex-shrink-0 border border-stone-700/30 shadow-inner">
+                        <img src={envImage} alt={env.name} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" referrerPolicy="no-referrer" />
                     </div>
                     <div className="flex-1">
-                        <div className="flex items-center gap-3">
-                            <h3 className={`text-lg font-serif tracking-tight ${isFull ? 'text-red-400' : 'text-stone-100 group-hover:text-gold'} transition-colors`}>{env.name}</h3>
-                            <div className={`p-0.5 rounded-full bg-stone-800/50 text-stone-500 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                        <div className="flex items-center justify-between">
+                            <h3 className={`text-lg font-medium ${isFull ? 'text-red-400' : 'text-stone-100'} transition-colors`}>{env.name}</h3>
+                            <div className={`p-1 rounded-full text-stone-500 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+                                <ChevronRight className="w-5 h-5" />
                             </div>
                         </div>
-                        <div className="flex items-center gap-3 mt-1">
-                            <div className="flex-1 bg-stone-800 h-1 rounded-full overflow-hidden">
-                                <div className={`h-full transition-all duration-700 ${tablePercEnv >= 100 ?'bg-red-500':'bg-gold/60'}`} style={{width:`${tablePercEnv>100?100:tablePercEnv}%`}}></div>
+                        <div className="flex items-center gap-4 mt-2">
+                            <div className="flex-1 bg-stone-800 h-1.5 rounded-full overflow-hidden">
+                                <div className={`h-full transition-all duration-1000 ease-out ${tablePercEnv >= 100 ?'bg-red-500':'bg-gold'}`} style={{width:`${tablePercEnv>100?100:tablePercEnv}%`}}></div>
                             </div>
-                            <span className={`text-[10px] font-mono font-bold min-w-[30px] text-right ${isFull ? 'text-red-400' : 'text-stone-400'}`}>{Math.round(tablePercEnv)}%</span>
+                            <span className={`text-xs font-mono font-bold ${isFull ? 'text-red-400' : 'text-stone-400'}`}>{Math.round(tablePercEnv)}%</span>
                         </div>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-[8px] uppercase tracking-widest text-stone-500 font-bold">Ocupación</p>
-                        <p className={`text-sm font-mono font-bold ${isFull ? 'text-red-400' : 'text-white'}`}>{currentTables}/{env.tables.length}</p>
                     </div>
                   </div>
                 
                 {isExpanded && (
-                  <div className="border-t border-stone-800/50 animate-fadeIn">
+                  <div className="border-t border-stone-800 animate-fadeIn">
                     <table className="w-full text-left border-collapse">
                       <thead>
-                        <tr className="bg-stone-900/40">
-                          <th className="py-1.5 px-4 text-[8px] uppercase tracking-widest text-stone-500 font-bold w-20">Hora</th>
-                          <th className="py-1.5 px-4 text-[8px] uppercase tracking-widest text-stone-500 font-bold">Reserva y Mesa</th>
-                          <th className="py-1.5 px-4 text-[8px] uppercase tracking-widest text-stone-500 font-bold w-16 text-center">Cub.</th>
-                          <th className="py-1.5 px-4 text-[8px] uppercase tracking-widest text-stone-500 font-bold w-24 text-center">Estado</th>
-                          <th className="py-1.5 px-4 text-[8px] uppercase tracking-widest text-stone-500 font-bold w-20 text-right">Acciones</th>
+                        <tr className="bg-stone-950/40">
+                          <th className="py-2 px-4 text-[9px] uppercase tracking-widest text-stone-500 font-bold w-16">Hora</th>
+                          <th className="py-2 px-4 text-[9px] uppercase tracking-widest text-stone-500 font-bold">Reserva</th>
+                          <th className="py-2 px-4 text-[9px] uppercase tracking-widest text-stone-500 font-bold w-12 text-center">Cub.</th>
+                          <th className="py-2 px-4 text-[9px] uppercase tracking-widest text-stone-500 font-bold w-20 text-center">Estado</th>
+                          <th className="py-2 px-4 text-[9px] uppercase tracking-widest text-stone-500 font-bold w-16 text-right">Acc.</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-stone-800/20">
+                      <tbody className="divide-y divide-stone-800/30">
                         {reservationsInEnv.map(res=>{ 
                           const isPending = res.status === 'pendiente';
                           const isCancelled = res.status === 'cancelada';
-                          const hasSpecialNotes = !isCancelled && (res.specialRequests || (res.dietaryRestrictions && res.dietaryRestrictions.length > 0) || res.reducedMobility || res.hasChildren || res.occasion); 
                           return (
                             <tr key={res.id} 
                               onClick={() => openEditReservationModal(res)}
                               className={`transition-all duration-200 text-xs group/row cursor-pointer
-                              ${isCancelled ? 'bg-stone-950/40 opacity-40' :
-                              isPending ? 'bg-stone-800/10 hover:bg-stone-800/30' :
-                              'bg-transparent hover:bg-white/[0.02]'
+                              ${isCancelled ? 'bg-stone-950/60 opacity-40' :
+                              isPending ? 'bg-stone-800/20 hover:bg-stone-800/40' :
+                              'bg-transparent hover:bg-white/[0.03]'
                             }`}>
-                                <td className={`py-2 px-4 font-mono font-bold text-xs ${isCancelled ? 'text-stone-600 line-through' : 'text-gold'}`}>{res.time}</td>
+                                <td className={`py-2 px-4 font-mono font-bold ${isCancelled ? 'text-stone-600 line-through' : 'text-gold'}`}>{res.time}</td>
                                 <td className={`py-2 px-4 ${isCancelled ? 'text-stone-600 line-through' : 'text-stone-300'}`}>
-                                  <div className="flex flex-col">
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-bold text-stone-100 text-xs tracking-tight">{res.name}</span>
-                                      {hasSpecialNotes && (
-                                          <div className="w-1 h-1 rounded-full bg-yellow-500" title="Notas especiales"></div>
-                                      )}
-                                      {!isCancelled && (!res.tableIds || res.tableIds.length === 0) && (
-                                          <div className="w-1 h-1 rounded-full bg-red-500 animate-pulse" title="¡ALERTA! Sin mesa asignada"></div>
-                                      )}
-                                    </div>
-                                    {res.tableName && <div className="text-[8px] text-stone-500 font-medium uppercase tracking-widest">{res.tableName}</div>}
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-bold text-stone-100">{res.name}</span>
+                                    {res.tableName && <span className="text-[9px] text-gold font-bold uppercase tracking-wider bg-gold/10 px-1.5 py-0.5 rounded">{res.tableName}</span>}
                                   </div>
                                 </td>
-                                <td className={`py-2 px-4 text-center font-mono text-xs font-bold ${isCancelled ? 'text-stone-600 line-through' : 'text-stone-200'}`}>{res.guests}</td>
+                                <td className={`py-2 px-4 text-center font-mono font-bold ${isCancelled ? 'text-stone-600 line-through' : 'text-stone-200'}`}>{res.guests}</td>
                                 <td className="py-2 px-4 text-center">
-                                    {isPending && <span className="text-[7px] uppercase tracking-widest font-black text-gold/80 bg-gold/5 px-1.5 py-0.5 rounded-full border border-gold/20">Pendiente</span>}
-                                    {isCancelled && <span className="text-[7px] uppercase tracking-widest font-black text-stone-500 bg-stone-900 px-1.5 py-0.5 rounded-full border border-stone-800">Cancelada</span>}
-                                    {!isPending && !isCancelled && <span className="text-[7px] uppercase tracking-widest font-black text-emerald-400 bg-emerald-500/5 px-1.5 py-0.5 rounded-full border border-emerald-500/20">Confirmada</span>}
+                                    {isPending && <span className="text-[9px] uppercase tracking-widest font-bold text-gold bg-gold/10 px-2 py-0.5 rounded-full border border-gold/20">Pend.</span>}
+                                    {isCancelled && <span className="text-[9px] uppercase tracking-widest font-bold text-stone-500 bg-stone-900 px-2 py-0.5 rounded-full border border-stone-800">Canc.</span>}
+                                    {!isPending && !isCancelled && <span className="text-[9px] uppercase tracking-widest font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">Conf.</span>}
                                 </td>
                                 <td className="py-2 px-4 text-right">
                                   <div className="flex items-center justify-end gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
-                                      <button onClick={(e) => { e.stopPropagation(); openEditReservationModal(res); }} className="text-stone-500 hover:text-gold p-1 transition-colors rounded hover:bg-gold/10"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
-                                      <button onClick={(e) => { e.stopPropagation(); setConfirmingDelete(res); }} className="text-stone-500 hover:text-red-500 p-1 transition-colors rounded hover:bg-red-500/10"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                                      <button onClick={(e) => { e.stopPropagation(); openEditReservationModal(res); }} className="text-stone-500 hover:text-gold p-1 transition-colors"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
+                                      <button onClick={(e) => { e.stopPropagation(); setConfirmingDelete(res); }} className="text-stone-500 hover:text-red-500 p-1 transition-colors"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
                                   </div>
                                 </td>
                             </tr>
@@ -549,40 +541,50 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
                         })}
                       </tbody>
                     </table>
-                    
-                    <div className="p-3 border-t border-stone-800 bg-stone-900/30">
-                      <div className="flex justify-between items-center mb-2">
-                        <h4 className="text-[8px] uppercase tracking-widest text-stone-500 font-bold">Mesas Disponibles</h4>
+                           {/* HIGHLIGHTED AVAILABLE TABLES SECTION */}
+                    <div className="p-5 border-t border-stone-800/60 bg-stone-950/20">
+                      <div className="flex justify-between items-center mb-4">
+                        <h4 className="text-xs uppercase tracking-widest text-stone-400 font-bold">Mesas Disponibles</h4>
                         {availableTables.length > 0 && (
-                          <button onClick={()=>openNewReservationModalForEnv(env.id, env.name, undefined, defaultTime)} className="text-gold hover:text-white transition-colors flex items-center gap-1 text-[8px] uppercase tracking-widest font-bold">
-                            <Plus size={10} /> Nueva Reserva
+                          <button onClick={()=>openNewReservationModalForEnv(env.id, env.name, undefined, defaultTime)} className="text-gold hover:text-white transition-all flex items-center gap-2 text-xs uppercase tracking-widest font-bold bg-gold/10 hover:bg-gold/20 px-4 py-2 rounded-lg border border-gold/20">
+                            <Plus className="w-4 h-4" /> Nueva
                           </button>
                         )}
                       </div>
-                      <div className="flex flex-wrap gap-1.5">
+                      
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         {availableTables.map(table => {
                           const isSelected = selectedTables[`${env.id}-${shiftKey}`]?.includes(table.id);
                           return (
                             <button
                               key={table.id}
                               onClick={() => handleTableClick(`${env.id}-${shiftKey}`, table.id)}
-                              className={`relative px-2 py-1 text-[10px] border rounded transition-colors ${isSelected ? 'bg-gold text-black border-gold font-bold' : 'border-stone-700 text-stone-400 hover:border-gold'}`}
+                              className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all font-bold w-full h-20
+                                ${isSelected 
+                                  ? 'bg-gold border-gold text-black shadow-[0_0_15px_rgba(212,175,55,0.4)]' 
+                                  : 'bg-stone-800/60 border-stone-700 text-stone-100 hover:border-gold/50 hover:bg-stone-800'}`}
                             >
-                              {table.name} <span className="opacity-50 ml-0.5">({table.capacity})</span>
+                              <span className="text-lg">{table.name}</span>
+                              <span className="text-[12px] opacity-80 flex items-center gap-1">
+                                <Users size={12} />
+                                {table.capacity}
+                              </span>
                             </button>
                           )
                         })}
-                        {availableTables.length === 0 && <p className="text-[8px] text-stone-600 italic">No hay mesas disponibles.</p>}
                       </div>
+                      
                       {selectedTables[`${env.id}-${shiftKey}`]?.length > 0 && (
-                        <button 
-                           onClick={() => {
-                               openNewReservationModalForEnv(env.id, env.name, selectedTables[`${env.id}-${shiftKey}`], defaultTime);
-                               setSelectedTables(prev => ({ ...prev, [`${env.id}-${shiftKey}`]: [] }));
-                           }}
-                           className="mt-3 w-full py-2 bg-gold text-black text-[8px] uppercase tracking-widest font-bold rounded hover:bg-yellow-500 transition-colors">
-                          Reservar Seleccionadas
-                        </button>
+                        <div className="mt-6 flex justify-center">
+                            <button 
+                               onClick={() => {
+                                   openNewReservationModalForEnv(env.id, env.name, selectedTables[`${env.id}-${shiftKey}`], defaultTime);
+                                   setSelectedTables(prev => ({ ...prev, [`${env.id}-${shiftKey}`]: [] }));
+                               }}
+                               className="flex items-center gap-2 px-6 py-2 bg-gold text-black text-xs uppercase tracking-widest font-bold rounded-lg hover:bg-yellow-500 transition-all">
+                               <span>Reservar {selectedTables[`${env.id}-${shiftKey}`].length} {selectedTables[`${env.id}-${shiftKey}`].length === 1 ? 'Mesa' : 'Mesas'}</span>
+                             </button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -596,11 +598,15 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
     };
 
     return (<div className="hidden md:block">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16 no-print">
-            {renderShiftView('Turno Mediodía', middayReservations, middayCapacity, middayTableCapacity)}
-            {renderShiftView('Turno Noche', nightReservations, nightCapacity, nightTableCapacity)}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 mb-24 no-print">
+            <div className="space-y-8">
+                {renderShiftView('Turno Mediodía', middayReservations, middayCapacity, middayTableCapacity)}
+            </div>
+            <div className="space-y-8">
+                {renderShiftView('Turno Noche', nightReservations, nightCapacity, nightTableCapacity)}
+            </div>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-16 gap-y-16 border-t border-stone-800/50 pt-16">
             {renderReservationList('Listado Mediodía', middayReservations)}
             {renderReservationList('Listado Noche', nightReservations)}
         </div>
