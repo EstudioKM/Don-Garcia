@@ -95,13 +95,21 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, customer
           
           <div>
             <label className={`${labelClasses} mb-2`}>Preferencias del Cliente</label>
-            <div className="flex flex-wrap gap-2 items-center p-3 bg-black/20 border border-stone-800 rounded">
-                <DietaryOption label="Sin TACC" selected={!!formData.dietaryRestrictions?.includes('Sin TACC')} onClick={() => handleDietaryToggle('Sin TACC')} />
-                <DietaryOption label="Vegetariano" selected={!!formData.dietaryRestrictions?.includes('Vegetariano')} onClick={() => handleDietaryToggle('Vegetariano')} />
-                <DietaryOption label="Vegano" selected={!!formData.dietaryRestrictions?.includes('Vegano')} onClick={() => handleDietaryToggle('Vegano')} />
-                <div className="flex items-center gap-2 pl-3 border-l border-stone-700">
-                    <input id="mobility-customer-modal" type="checkbox" checked={!!formData.reducedMobility} onChange={e => setFormData({...formData, reducedMobility: e.target.checked})} className="h-4 w-4 rounded bg-stone-700 border-stone-600 text-gold focus:ring-gold"/>
-                    <label htmlFor="mobility-customer-modal" className="text-xs text-stone-300">Movilidad reducida</label>
+            <div className="flex flex-col gap-3 p-3 bg-black/20 border border-stone-800 rounded">
+                <div className="flex flex-wrap gap-2 items-center">
+                    <DietaryOption label="Sin TACC" selected={!!formData.dietaryRestrictions?.includes('Sin TACC')} onClick={() => handleDietaryToggle('Sin TACC')} />
+                    <DietaryOption label="Vegetariano" selected={!!formData.dietaryRestrictions?.includes('Vegetariano')} onClick={() => handleDietaryToggle('Vegetariano')} />
+                    <DietaryOption label="Vegano" selected={!!formData.dietaryRestrictions?.includes('Vegano')} onClick={() => handleDietaryToggle('Vegano')} />
+                </div>
+                <div className="flex items-center gap-4 pt-2 border-t border-stone-800">
+                    <div className="flex items-center gap-2">
+                        <input id="mobility-customer-modal" type="checkbox" checked={!!formData.reducedMobility} onChange={e => setFormData({...formData, reducedMobility: e.target.checked})} className="h-4 w-4 rounded bg-stone-700 border-stone-600 text-gold focus:ring-gold"/>
+                        <label htmlFor="mobility-customer-modal" className="text-xs text-stone-300">Movilidad reducida</label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <input id="children-customer-modal" type="checkbox" checked={!!formData.hasChildren} onChange={e => setFormData({...formData, hasChildren: e.target.checked})} className="h-4 w-4 rounded bg-stone-700 border-stone-600 text-gold focus:ring-gold"/>
+                        <label htmlFor="children-customer-modal" className="text-xs text-stone-300">Suele asistir con niños</label>
+                    </div>
                 </div>
             </div>
           </div>

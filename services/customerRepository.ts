@@ -44,7 +44,14 @@ export const normalizePhoneNumber = (phone: string): string => {
  * @param email El email opcional del cliente.
  * @returns El ID del cliente encontrado o recién creado.
  */
-export const findOrCreateCustomer = async (phone: string, name: string, email?: string): Promise<string> => {
+export const findOrCreateCustomer = async (
+    phone: string, 
+    name: string, 
+    email?: string,
+    dietaryRestrictions?: string[],
+    reducedMobility?: boolean,
+    hasChildren?: boolean
+): Promise<string> => {
     const normalizedPhone = normalizePhoneNumber(phone);
     if (!normalizedPhone) {
         throw new Error("El número de teléfono proporcionado es inválido.");
@@ -64,6 +71,14 @@ export const findOrCreateCustomer = async (phone: string, name: string, email?: 
             const currentData = customerDoc.data();
             if (currentData.name !== name) updates.name = name;
             if (email && currentData.email !== email) updates.email = email;
+            
+            // Update preferences if provided and different
+            if (dietaryRestrictions && dietaryRestrictions.length > 0) {
+                // Simple check, in a real app might want to merge or deep compare
+                updates.dietaryRestrictions = dietaryRestrictions;
+            }
+            if (reducedMobility !== undefined) updates.reducedMobility = reducedMobility;
+            if (hasChildren !== undefined) updates.hasChildren = hasChildren;
 
             await updateDoc(doc(db, COLLECTION_NAME, customerId), updates);
             return customerId;
@@ -78,8 +93,9 @@ export const findOrCreateCustomer = async (phone: string, name: string, email?: 
                 lastSeen: Timestamp.now(),
                 notes: '',
                 tags: '',
-                dietaryRestrictions: [],
-                reducedMobility: false,
+                dietaryRestrictions: dietaryRestrictions || [],
+                reducedMobility: reducedMobility || false,
+                hasChildren: hasChildren || false,
             };
             const docRef = await addDoc(collection(db, COLLECTION_NAME), newCustomerData);
             return docRef.id;
@@ -167,6 +183,7 @@ export const createCustomer = async (customerData: Omit<Customer, 'id' | 'reserv
         tags: customerData.tags || '',
         dietaryRestrictions: customerData.dietaryRestrictions || [],
         reducedMobility: customerData.reducedMobility || false,
+        hasChildren: customerData.hasChildren || false,
     };
     return await addDoc(collection(db, COLLECTION_NAME), newCustomer);
 };

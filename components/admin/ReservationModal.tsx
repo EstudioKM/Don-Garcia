@@ -222,7 +222,14 @@ const ReservationModal: React.FC<ReservationModalProps> = ({ isOpen, onClose, re
     
     // --- Lógica de Creación de Cliente y Reserva ---
     try {
-      const customerId = await findOrCreateCustomer(formData.phone, formData.name, formData.email);
+      const customerId = await findOrCreateCustomer(
+        formData.phone, 
+        formData.name, 
+        formData.email,
+        formData.dietaryRestrictions,
+        formData.reducedMobility,
+        formData.hasChildren
+      );
       const combinedDate = new Date(`${formData.dateString}T${formData.time || '00:00'}:00-03:00`);
       
       const dataPayload: Omit<Reservation, 'id'> = {
@@ -240,6 +247,8 @@ const ReservationModal: React.FC<ReservationModalProps> = ({ isOpen, onClose, re
           environmentName: selectedEnv?.name || null,
           dietaryRestrictions: formData.dietaryRestrictions || [],
           reducedMobility: formData.reducedMobility || false,
+          hasChildren: formData.hasChildren || false,
+          occasion: formData.occasion || 'Cena casual',
           customerId: customerId,
       };
       
@@ -267,6 +276,8 @@ const ReservationModal: React.FC<ReservationModalProps> = ({ isOpen, onClose, re
             environmentName: dataPayload.environmentName,
             dietaryRestrictions: dataPayload.dietaryRestrictions,
             reducedMobility: dataPayload.reducedMobility,
+            hasChildren: dataPayload.hasChildren,
+            occasion: dataPayload.occasion,
             specialRequests: dataPayload.specialRequests,
             customerId: dataPayload.customerId,
           };
@@ -384,14 +395,38 @@ const ReservationModal: React.FC<ReservationModalProps> = ({ isOpen, onClose, re
                     </div>
                 </div>
                 <div>
-                    <label className={`${labelClasses} mb-2`}>Preferencias</label>
-                    <div className="flex flex-wrap gap-2 items-center p-3 bg-black/20 border border-stone-800 rounded">
-                        <DietaryOption label="Sin TACC" selected={!!formData.dietaryRestrictions?.includes('Sin TACC')} onClick={() => handleDietaryToggle('Sin TACC')} />
-                        <DietaryOption label="Vegetariano" selected={!!formData.dietaryRestrictions?.includes('Vegetariano')} onClick={() => handleDietaryToggle('Vegetariano')} />
-                        <DietaryOption label="Vegano" selected={!!formData.dietaryRestrictions?.includes('Vegano')} onClick={() => handleDietaryToggle('Vegano')} />
-                        <div className="flex items-center gap-2 pl-3 border-l border-stone-700">
-                            <input id="mobility-modal" type="checkbox" checked={!!formData.reducedMobility} onChange={e => setFormData({...formData, reducedMobility: e.target.checked})} className="h-4 w-4 rounded bg-stone-700 border-stone-600 text-gold focus:ring-gold"/>
-                            <label htmlFor="mobility-modal" className="text-xs text-stone-300">Movilidad reducida</label>
+                    <label className={`${labelClasses} mb-2`}>Detalles Especiales</label>
+                    <div className="flex flex-col gap-3 p-3 bg-black/20 border border-stone-800 rounded">
+                        <div className="flex flex-wrap gap-2 items-center">
+                            <DietaryOption label="Sin TACC" selected={!!formData.dietaryRestrictions?.includes('Sin TACC')} onClick={() => handleDietaryToggle('Sin TACC')} />
+                            <DietaryOption label="Vegetariano" selected={!!formData.dietaryRestrictions?.includes('Vegetariano')} onClick={() => handleDietaryToggle('Vegetariano')} />
+                            <DietaryOption label="Vegano" selected={!!formData.dietaryRestrictions?.includes('Vegano')} onClick={() => handleDietaryToggle('Vegano')} />
+                        </div>
+                        <div className="flex items-center gap-4 pt-2 border-t border-stone-800">
+                            <div className="flex items-center gap-2">
+                                <input id="mobility-modal" type="checkbox" checked={!!formData.reducedMobility} onChange={e => setFormData({...formData, reducedMobility: e.target.checked})} className="h-4 w-4 rounded bg-stone-700 border-stone-600 text-gold focus:ring-gold"/>
+                                <label htmlFor="mobility-modal" className="text-xs text-stone-300">Movilidad reducida</label>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <input id="children-modal" type="checkbox" checked={!!formData.hasChildren} onChange={e => setFormData({...formData, hasChildren: e.target.checked})} className="h-4 w-4 rounded bg-stone-700 border-stone-600 text-gold focus:ring-gold"/>
+                                <label htmlFor="children-modal" className="text-xs text-stone-300">Asistirán niños</label>
+                            </div>
+                        </div>
+                        <div className="pt-2 border-t border-stone-800">
+                            <label className="text-[10px] uppercase tracking-widest text-stone-400 block mb-1">Motivo</label>
+                            <select
+                                value={formData.occasion || 'Cena casual'}
+                                onChange={(e) => setFormData({ ...formData, occasion: e.target.value })}
+                                className={`${inputClasses} appearance-none`}
+                            >
+                                <option value="Cena casual">Cena casual</option>
+                                <option value="Aniversario">Aniversario</option>
+                                <option value="Cumpleaños">Cumpleaños</option>
+                                <option value="Reunión Empresarial">Reunión Empresarial</option>
+                                <option value="Cita Romántica">Cita Romántica</option>
+                                <option value="Celebración Familiar">Celebración Familiar</option>
+                                <option value="Otro">Otro</option>
+                            </select>
                         </div>
                     </div>
                 </div>

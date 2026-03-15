@@ -72,7 +72,9 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
             const preferences = [];
             if (r.specialRequests) preferences.push(r.specialRequests);
             if (r.dietaryRestrictions && r.dietaryRestrictions.length > 0) preferences.push(`Dietas: ${r.dietaryRestrictions.join(', ')}`);
-            if (r.reducedMobility) preferences.push('Movilidad reducida.');
+            if (r.reducedMobility) preferences.push('Movilidad reducida');
+            if (r.hasChildren) preferences.push('Con niños');
+            if (r.occasion) preferences.push(`Motivo: ${r.occasion}`);
             if (preferences.length > 0) notesContent = preferences.join(' | ');
         } else {
             notesContent = 'CANCELADA';
@@ -178,7 +180,7 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
             <tbody className="divide-y divide-stone-800">
               {shiftReservations.map(r => {
                 const isCancelled = r.status === 'cancelada';
-                const hasSpecialNotes = !isCancelled && (r.specialRequests || (r.dietaryRestrictions && r.dietaryRestrictions.length > 0) || r.reducedMobility);
+                const hasSpecialNotes = !isCancelled && (r.specialRequests || (r.dietaryRestrictions && r.dietaryRestrictions.length > 0) || r.reducedMobility || r.hasChildren || r.occasion);
                 return (
                   <tr key={r.id} className={`transition-colors ${isCancelled ? 'bg-stone-900/50 opacity-60' : 'hover:bg-stone-800/50'}`}>
                     <td className={`p-4 font-bold ${isCancelled ? 'text-stone-600 line-through' : 'text-white'}`}>{r.time}</td>
@@ -195,7 +197,17 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
                     </td>
                     <td className={`p-4 hidden sm:table-cell ${isCancelled ? 'text-stone-600 line-through' : 'text-stone-300'}`}>{r.guests}</td>
                     <td className={`p-4 hidden md:table-cell ${isCancelled ? 'text-stone-600 line-through' : 'text-stone-300'}`}>{r.environmentName || 'N/A'}</td>
-                    <td className={`p-4 text-xs italic ${isCancelled ? 'text-stone-700 line-through' : 'text-stone-400'}`}>{r.specialRequests || '-'}</td>
+                    <td className={`p-4 text-xs italic ${isCancelled ? 'text-stone-700 line-through' : 'text-stone-400'}`}>
+                      {(() => {
+                        const notes = [];
+                        if (r.specialRequests) notes.push(r.specialRequests);
+                        if (r.dietaryRestrictions && r.dietaryRestrictions.length > 0) notes.push(`Dietas: ${r.dietaryRestrictions.join(', ')}`);
+                        if (r.reducedMobility) notes.push('Movilidad reducida');
+                        if (r.hasChildren) notes.push('Con niños');
+                        if (r.occasion) notes.push(`Motivo: ${r.occasion}`);
+                        return notes.length > 0 ? notes.join(' | ') : '-';
+                      })()}
+                    </td>
                     <td className="p-4 text-right no-print">
                       <div className="flex items-center justify-end gap-2">
                           <button onClick={() => openEditReservationModal(r)} className="text-stone-400 hover:text-gold p-2 transition-colors" title="Editar reserva"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
@@ -232,7 +244,7 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
             return (<div key={env.id} className="mb-12"><div className="mb-6"><div className={`flex justify-between items-center mb-3 border-l-4 ${isFull ? 'border-red-500/70' : 'border-gold/50'} pl-4`}><h3 className={`text-xl font-serif ${isFull ? 'text-red-400' : 'text-gold'}`}>{env.name}</h3><div className="text-right"><p className={`text-sm font-bold font-mono ${isFull ? 'text-red-400' : 'text-white'}`}>{Math.round(perc)}%</p><p className="text-[8px] uppercase tracking-widest text-stone-500 font-bold">Ocupación</p></div></div><div className="w-full bg-stone-800/50 h-1.5"><div className={`h-1.5 transition-all ${perc >= 100 ?'bg-red-500':'bg-gold'}`} style={{width:`${perc>100?100:perc}%`}}></div></div></div><div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">{reservationsInEnv.map(res=>{ 
               const isPending = res.status === 'pendiente';
               const isCancelled = res.status === 'cancelada';
-              const hasSpecialNotes = !isCancelled && (res.specialRequests || (res.dietaryRestrictions && res.dietaryRestrictions.length > 0) || res.reducedMobility); 
+              const hasSpecialNotes = !isCancelled && (res.specialRequests || (res.dietaryRestrictions && res.dietaryRestrictions.length > 0) || res.reducedMobility || res.hasChildren || res.occasion); 
               return (
                 <div key={res.id} className={`relative group aspect-square bg-stone-900/70 border-2 rounded-sm transition-colors 
                   ${isCancelled ? 'border-red-900/50 opacity-60 hover:border-red-700' :
@@ -295,7 +307,7 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
   const renderMobileView = () => {
     const statusClasses: Record<Reservation['status'], string> = { confirmada: 'bg-gold', pendiente: 'bg-stone-500', cancelada: 'bg-red-500' };
     const ReservationCard: React.FC<{res: Reservation}> = ({res}) => {
-        const hasSpecialNotes = res.specialRequests || (res.dietaryRestrictions && res.dietaryRestrictions.length > 0) || res.reducedMobility;
+        const hasSpecialNotes = res.specialRequests || (res.dietaryRestrictions && res.dietaryRestrictions.length > 0) || res.reducedMobility || res.hasChildren || res.occasion;
         return (
             <button onClick={() => openEditReservationModal(res)} className="w-full bg-stone-900/70 border-l-4 border-gold/30 p-4 rounded-sm flex items-center gap-4 text-left shadow-lg hover:bg-stone-800 transition-colors">
                 <div className={`w-1.5 h-10 rounded-full ${statusClasses[res.status]}`}></div>

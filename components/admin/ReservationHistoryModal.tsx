@@ -57,6 +57,13 @@ const ReservationHistoryModal: React.FC<ReservationHistoryModalProps> = ({ isOpe
                     <div>
                         <p className="font-bold text-white">{res.date.toLocaleDateString('es-AR', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
                         <p className="text-xs text-stone-500">{res.time} hs - {res.guests} cub. - {res.environmentName || 'Salón'}</p>
+                        {(res.occasion || res.hasChildren) && (
+                            <p className="text-[10px] text-gold mt-1">
+                                {res.occasion && <span>{res.occasion}</span>}
+                                {res.occasion && res.hasChildren && <span className="mx-1">•</span>}
+                                {res.hasChildren && <span>Con niños</span>}
+                            </p>
+                        )}
                     </div>
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${statusClasses[res.status]}`}>
                         {res.status}

@@ -24,6 +24,8 @@ export interface Reservation {
   dietaryRestrictions?: string[];
   reducedMobility?: boolean;
   customerId?: string;
+  hasChildren?: boolean;
+  occasion?: string;
 }
 
 export interface Customer {
@@ -38,6 +40,7 @@ export interface Customer {
     tags?: string; // Comma-separated tags e.g., "VIP,Alergia Nuez"
     dietaryRestrictions?: string[];
     reducedMobility?: boolean;
+    hasChildren?: boolean;
 }
 
 

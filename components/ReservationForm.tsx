@@ -34,6 +34,8 @@ const ReservationForm: React.FC<ReservationFormProps> = ({ formId, onSubmittingC
     specialRequests: '',
     dietaryRestrictions: [] as string[],
     reducedMobility: false,
+    hasChildren: false,
+    occasion: '',
   });
   
   const [settings, setSettings] = useState<RestaurantSettings | null>(null);
@@ -154,7 +156,14 @@ const ReservationForm: React.FC<ReservationFormProps> = ({ formId, onSubmittingC
             return;
         }
       
-      const customerId = await findOrCreateCustomer(dataToSubmit.phone, dataToSubmit.name);
+      const customerId = await findOrCreateCustomer(
+        dataToSubmit.phone, 
+        dataToSubmit.name,
+        undefined, // email
+        dataToSubmit.dietaryRestrictions,
+        dataToSubmit.reducedMobility,
+        dataToSubmit.hasChildren
+      );
       const combinedDate = new Date(`${dataToSubmit.date}T${dataToSubmit.time}:00-03:00`); // Force Argentina Timezone
       const environmentName = selectedEnv.name;
       
@@ -169,6 +178,8 @@ const ReservationForm: React.FC<ReservationFormProps> = ({ formId, onSubmittingC
         environmentName,
         dietaryRestrictions: dataToSubmit.dietaryRestrictions,
         reducedMobility: dataToSubmit.reducedMobility,
+        hasChildren: dataToSubmit.hasChildren,
+        occasion: dataToSubmit.occasion,
         specialRequests: dataToSubmit.specialRequests,
         customerId: customerId,
       };
@@ -190,6 +201,8 @@ const ReservationForm: React.FC<ReservationFormProps> = ({ formId, onSubmittingC
           environmentName: dataToCreate.environmentName,
           dietaryRestrictions: dataToCreate.dietaryRestrictions,
           reducedMobility: dataToCreate.reducedMobility,
+          hasChildren: dataToCreate.hasChildren,
+          occasion: dataToCreate.occasion,
           specialRequests: dataToCreate.specialRequests,
           customerId: dataToCreate.customerId,
         };
@@ -301,7 +314,7 @@ const ReservationForm: React.FC<ReservationFormProps> = ({ formId, onSubmittingC
     setConfirmation(null);
     setQrCodeDataUrl(null);
     setError(null);
-    setFormData({ name: '', phone: '', date: '', shift: '', time: '', guests: 2, environmentId: layout?.environments[0].id || '', specialRequests: '', dietaryRestrictions: [], reducedMobility: false });
+    setFormData({ name: '', phone: '', date: '', shift: '', time: '', guests: 2, environmentId: layout?.environments[0].id || '', specialRequests: '', dietaryRestrictions: [], reducedMobility: false, hasChildren: false, occasion: '' });
   }
 
   const handleDownloadPDF = () => {
@@ -365,11 +378,12 @@ const ReservationForm: React.FC<ReservationFormProps> = ({ formId, onSubmittingC
                     )}
                 </div>
                 <div className="text-left bg-black/30 p-4 rounded-md border border-stone-800 space-y-2 mb-2">
-                    <p className="text-sm"><strong className="text-gold w-20 inline-block">Nombre:</strong> {confirmation?.name}</p>
-                    <p className="text-sm"><strong className="text-gold w-20 inline-block">Día:</strong> {confirmation?.date.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-                    <p className="text-sm"><strong className="text-gold w-20 inline-block">Hora:</strong> {confirmation?.time} hs</p>
-                    <p className="text-sm"><strong className="text-gold w-20 inline-block">Personas:</strong> {confirmation?.guests}</p>
-                    <p className="text-sm"><strong className="text-gold w-20 inline-block">Ambiente:</strong> {confirmation?.environmentName}</p>
+                    <p className="text-sm"><strong className="text-gold w-24 inline-block">Nombre:</strong> {confirmation?.name}</p>
+                    <p className="text-sm"><strong className="text-gold w-24 inline-block">Día:</strong> {confirmation?.date.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+                    <p className="text-sm"><strong className="text-gold w-24 inline-block">Hora:</strong> {confirmation?.time} hs</p>
+                    <p className="text-sm"><strong className="text-gold w-24 inline-block">Personas:</strong> {confirmation?.guests} {confirmation?.hasChildren && '(Incluye niños)'}</p>
+                    <p className="text-sm"><strong className="text-gold w-24 inline-block">Ambiente:</strong> {confirmation?.environmentName}</p>
+                    {confirmation?.occasion && <p className="text-sm"><strong className="text-gold w-24 inline-block">Motivo:</strong> {confirmation?.occasion}</p>}
                 </div>
               </div>
               
@@ -443,16 +457,54 @@ const ReservationForm: React.FC<ReservationFormProps> = ({ formId, onSubmittingC
           <div><label className="text-xs uppercase tracking-widest text-gold font-black block mb-2">Personas</label><input required type="number" min="1" max="12" value={formData.guests} onChange={e => setFormData({...formData, guests: parseInt(e.target.value)})} className="w-full bg-stone-900 border-2 border-stone-800 py-3 px-4 focus:border-gold outline-none"/></div>
           <div><label className="text-xs uppercase tracking-widest text-gold font-black block mb-2">Ambiente</label><select required value={formData.environmentId} onChange={e => setFormData({...formData, environmentId: e.target.value})} className="w-full bg-stone-900 border-2 border-stone-800 py-3 px-4 focus:border-gold outline-none appearance-none"><option value="">Seleccione ambiente</option>{layout?.environments.map(env => <option key={env.id} value={env.id}>{env.name}</option>)}</select></div>
         </div>
-        <div>
-          <label className="text-xs uppercase tracking-widest text-gold font-black block mb-4">Preferencias</label>
-          <div className="flex flex-wrap gap-4 items-center">
-            <DietaryOption label="Sin TACC" selected={formData.dietaryRestrictions.includes('Sin TACC')} onClick={() => handleDietaryToggle('Sin TACC')} />
-            <DietaryOption label="Vegetariano" selected={formData.dietaryRestrictions.includes('Vegetariano')} onClick={() => handleDietaryToggle('Vegetariano')} />
-            <DietaryOption label="Vegano" selected={formData.dietaryRestrictions.includes('Vegano')} onClick={() => handleDietaryToggle('Vegano')} />
-            <div className="flex items-center gap-2 pl-4"><input id="mobility" type="checkbox" checked={formData.reducedMobility} onChange={e => setFormData({...formData, reducedMobility: e.target.checked})} className="h-4 w-4 rounded bg-stone-700 border-stone-600 text-gold focus:ring-gold"/><label htmlFor="mobility" className="text-xs text-stone-300">Acceso para movilidad reducida</label></div>
+        <div className="border-t border-stone-800 pt-6 mt-6">
+          <h3 className="text-lg font-serif text-gold mb-4">Detalles Especiales</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <label className="text-xs uppercase tracking-widest text-stone-400 font-bold block mb-3">Motivo de la Reserva</label>
+              <select value={formData.occasion} onChange={e => setFormData({...formData, occasion: e.target.value})} className="w-full bg-stone-900 border-2 border-stone-800 py-3 px-4 focus:border-gold outline-none appearance-none text-stone-300">
+                <option value="">Cena casual (Sin motivo especial)</option>
+                <option value="Aniversario">Aniversario</option>
+                <option value="Cumpleaños">Cumpleaños</option>
+                <option value="Reunión Empresarial">Reunión Empresarial</option>
+                <option value="Cita Romántica">Cita Romántica</option>
+                <option value="Celebración Familiar">Celebración Familiar</option>
+                <option value="Otro">Otro motivo</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className="text-xs uppercase tracking-widest text-stone-400 font-bold block mb-3">Acompañantes</label>
+              <div className="flex items-center gap-3 bg-stone-900 border-2 border-stone-800 p-3 rounded-sm h-[52px]">
+                <input id="children" type="checkbox" checked={formData.hasChildren} onChange={e => setFormData({...formData, hasChildren: e.target.checked})} className="h-5 w-5 rounded bg-stone-800 border-stone-700 text-gold focus:ring-gold focus:ring-offset-stone-900 ml-2"/>
+                <label htmlFor="children" className="text-sm text-stone-300 cursor-pointer select-none flex-1">Asistiremos con niños</label>
+              </div>
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <label className="text-xs uppercase tracking-widest text-stone-400 font-bold block mb-3">Restricciones Alimenticias</label>
+            <div className="flex flex-wrap gap-3">
+              <DietaryOption label="Sin TACC" selected={formData.dietaryRestrictions.includes('Sin TACC')} onClick={() => handleDietaryToggle('Sin TACC')} />
+              <DietaryOption label="Vegetariano" selected={formData.dietaryRestrictions.includes('Vegetariano')} onClick={() => handleDietaryToggle('Vegetariano')} />
+              <DietaryOption label="Vegano" selected={formData.dietaryRestrictions.includes('Vegano')} onClick={() => handleDietaryToggle('Vegano')} />
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <label className="text-xs uppercase tracking-widest text-stone-400 font-bold block mb-3">Accesibilidad</label>
+            <div className="flex items-center gap-3 bg-stone-900 border-2 border-stone-800 p-3 rounded-sm w-full md:w-1/2 h-[52px]">
+              <input id="mobility" type="checkbox" checked={formData.reducedMobility} onChange={e => setFormData({...formData, reducedMobility: e.target.checked})} className="h-5 w-5 rounded bg-stone-800 border-stone-700 text-gold focus:ring-gold focus:ring-offset-stone-900 ml-2"/>
+              <label htmlFor="mobility" className="text-sm text-stone-300 cursor-pointer select-none flex-1">Requerimos acceso para movilidad reducida</label>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs uppercase tracking-widest text-stone-400 font-bold block mb-3">Notas Adicionales</label>
+            <textarea value={formData.specialRequests} onChange={e => setFormData({...formData, specialRequests: e.target.value})} placeholder="Algún otro detalle que debamos saber para recibirlo de la mejor manera..." className="w-full bg-stone-900 border-2 border-stone-800 py-3 px-4 focus:border-gold outline-none h-24 resize-none text-stone-300"></textarea>
           </div>
         </div>
-        <div><label className="text-xs uppercase tracking-widest text-gold font-black block mb-2">Notas Adicionales</label><textarea value={formData.specialRequests} onChange={e => setFormData({...formData, specialRequests: e.target.value})} placeholder="Alergias, celebraciones, etc." className="w-full bg-stone-900 border-2 border-stone-800 py-3 px-4 focus:border-gold outline-none h-24 resize-none"></textarea></div>
 
         {error && <p className="text-red-400 text-sm font-bold text-center border border-red-500/30 bg-red-500/10 p-4 rounded-md">{error}</p>}
         

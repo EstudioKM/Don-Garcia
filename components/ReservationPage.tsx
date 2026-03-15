@@ -12,13 +12,13 @@ const ReservationPage: React.FC = () => {
   return (
     <div className="bg-luxury-black text-white flex flex-col min-h-[100dvh]">
       {/* Encabezado Fijo */}
-      <header className="p-6 flex justify-between items-start border-b border-white/5 bg-luxury-black z-10 sticky top-0">
+      <header className="px-6 py-4 flex justify-between items-center border-b border-white/5 bg-luxury-black/80 backdrop-blur-md z-50 sticky top-0">
         <div>
-          <h1 className="text-xl font-serif text-gold tracking-widest font-bold leading-none">DON GARCÍA</h1>
-          <p className="text-stone-500 text-[9px] uppercase tracking-[0.3em] mt-1">La Casona 1930</p>
+          <h1 className="text-lg font-serif text-gold tracking-[0.2em] font-bold leading-none">DON GARCÍA</h1>
+          <p className="text-stone-600 text-[8px] uppercase tracking-[0.3em] mt-1 font-medium">La Casona 1930</p>
         </div>
-        <a href="#/" onClick={handleBackClick} className="text-[10px] text-stone-500 hover:text-gold uppercase tracking-widest transition-colors font-bold flex items-center">
-            <span className="mr-1">←</span> VOLVER
+        <a href="#/" onClick={handleBackClick} className="text-[10px] text-stone-500 hover:text-gold uppercase tracking-widest transition-colors font-bold flex items-center group">
+            <span className="mr-1.5 group-hover:-translate-x-1 transition-transform">←</span> VOLVER
         </a>
       </header>
 
