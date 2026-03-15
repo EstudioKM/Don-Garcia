@@ -371,40 +371,49 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
             </button>
         </div>
         <div className="w-full overflow-hidden rounded-sm border border-stone-800/50 bg-stone-900/20">
-          <table className="w-full text-left printable-table">
-            <thead><tr className="bg-stone-900/50"><th className="p-3 text-[10px] uppercase tracking-widest text-gold">Hora</th><th className="p-3 text-[10px] uppercase tracking-widest text-gold">Nombre</th><th className="p-3 text-[10px] uppercase tracking-widest text-gold hidden sm:table-cell">Cub.</th><th className="p-3 text-[10px] uppercase tracking-widest text-gold hidden md:table-cell">Ambiente</th><th className="p-3 text-[10px] uppercase tracking-widest text-gold">Notas</th><th className="p-3 text-[10px] uppercase tracking-widest text-gold no-print text-right">Acciones</th></tr></thead>
+          <table className="w-full text-left printable-table border-collapse">
+            <thead className="bg-stone-900 no-print">
+                <tr className="bg-stone-900/80 backdrop-blur-sm border-b border-stone-800">
+                    <th className="p-2 text-[10px] uppercase tracking-widest text-gold">Hora</th>
+                    <th className="p-2 text-[10px] uppercase tracking-widest text-gold">Nombre</th>
+                    <th className="p-2 text-[10px] uppercase tracking-widest text-gold hidden sm:table-cell">Cub.</th>
+                    <th className="p-2 text-[10px] uppercase tracking-widest text-gold hidden md:table-cell">Ambiente</th>
+                    <th className="p-2 text-[10px] uppercase tracking-widest text-gold">Notas</th>
+                    <th className="p-2 text-[10px] uppercase tracking-widest text-gold no-print text-right">Acciones</th>
+                </tr>
+            </thead>
             <tbody className="divide-y divide-stone-800/50">
               {shiftReservations.map(r => {
                 const isCancelled = r.status === 'cancelada';
                 const hasSpecialNotes = !isCancelled && (r.specialRequests || (r.dietaryRestrictions && r.dietaryRestrictions.length > 0) || r.reducedMobility || r.hasChildren || r.occasion);
                 return (
-                  <tr key={r.id} className={`transition-colors text-sm ${isCancelled ? 'bg-stone-900/30 opacity-60' : 'hover:bg-stone-800/30'}`}>
-                    <td className={`p-3 font-mono font-bold ${isCancelled ? 'text-stone-600 line-through' : 'text-white'}`}>{r.time}</td>
-                    <td className={`p-3 ${isCancelled ? 'text-stone-600 line-through' : 'text-stone-300'}`}>
+                  <tr key={r.id} className={`transition-colors text-xs ${isCancelled ? 'bg-stone-900/30 opacity-60' : 'hover:bg-stone-800/30'}`}>
+                    <td className={`p-2 font-mono font-bold ${isCancelled ? 'text-stone-600 line-through' : 'text-white'}`}>{r.time}</td>
+                    <td className={`p-2 ${isCancelled ? 'text-stone-600 line-through' : 'text-stone-300'}`}>
                       <div className="flex items-center gap-2">
                         <span className="font-semibold">{r.name}</span>
                         {hasSpecialNotes && 
-                            <svg className="w-3.5 h-3.5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                            <svg className="w-3 h-3 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
                                 <title>Esta reserva tiene notas especiales</title>
                                 <path fillRule="evenodd" d="M8.257 3.099c.636-1.21 2.852-1.21 3.488 0l6.237 11.94c.64 1.222-.464 2.71-1.744 2.71H3.764c-1.28 0-2.384-1.488-1.744-2.71l6.237-11.94zM9 14a1 1 0 112 0 1 1 0 01-2 0zm1-7a1 1 0 00-1 1v4a1 1 0 102 0V9a1 1 0 00-1-1z" clipRule="evenodd"></path>
                             </svg>
                         }
                         {!isCancelled && (!r.tableIds || r.tableIds.length === 0) && (
-                            <svg className="w-3.5 h-3.5 text-red-500 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
+                            <svg className="w-3 h-3 text-red-500 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
                                 <title>¡ALERTA! Sin mesa asignada</title>
                                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"></path>
                             </svg>
                         )}
                       </div>
                     </td>
-                    <td className={`p-3 hidden sm:table-cell ${isCancelled ? 'text-stone-600 line-through' : 'text-stone-300'}`}>{r.guests}</td>
-                    <td className={`p-3 hidden md:table-cell ${isCancelled ? 'text-stone-600 line-through' : 'text-stone-400'}`}>
-                      <div className="flex flex-col">
-                        <span>{r.environmentName || 'N/A'}</span>
-                        {r.tableName && <span className="text-[10px] text-gold font-bold">{r.tableName}</span>}
+                    <td className={`p-2 hidden sm:table-cell ${isCancelled ? 'text-stone-600 line-through' : 'text-stone-300'}`}>{r.guests}</td>
+                    <td className={`p-2 hidden md:table-cell ${isCancelled ? 'text-stone-600 line-through' : 'text-stone-400'}`}>
+                      <div className="flex flex-col leading-tight">
+                        <span className="text-[11px]">{r.environmentName || 'N/A'}</span>
+                        {r.tableName && <span className="text-[9px] text-gold font-bold">{r.tableName}</span>}
                       </div>
                     </td>
-                    <td className={`p-3 text-xs italic ${isCancelled ? 'text-stone-700 line-through' : 'text-stone-500'}`}>
+                    <td className={`p-2 text-[10px] italic leading-tight ${isCancelled ? 'text-stone-700 line-through' : 'text-stone-500'}`}>
                       {(() => {
                         const notes = [];
                         if (r.specialRequests) notes.push(r.specialRequests);
@@ -415,10 +424,10 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
                         return notes.length > 0 ? notes.join(' | ') : '-';
                       })()}
                     </td>
-                    <td className="p-3 text-right no-print">
+                    <td className="p-2 text-right no-print">
                       <div className="flex items-center justify-end gap-1">
-                          <button onClick={() => openEditReservationModal(r)} className="text-stone-500 hover:text-gold p-1.5 transition-colors" title="Editar reserva"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
-                          <button onClick={(e) => { e.stopPropagation(); setConfirmingDelete(r); }} className="text-stone-500 hover:text-red-500 p-1.5 transition-colors" title="Eliminar reserva"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                          <button onClick={() => openEditReservationModal(r)} className="text-stone-500 hover:text-gold p-1 transition-colors" title="Editar reserva"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
+                          <button onClick={(e) => { e.stopPropagation(); setConfirmingDelete(r); }} className="text-stone-500 hover:text-red-500 p-1 transition-colors" title="Eliminar reserva"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
                       </div>
                     </td>
                   </tr>
@@ -433,76 +442,69 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
 
   const renderReservationsViewDesktop = () => {
     const renderShiftView = (title: string, shiftReservations: Reservation[], shiftCapacity: number, shiftTableCapacity: number) => {
-      const totalGuestsInShift = shiftReservations.reduce((s, r) => s + (r.status === 'confirmada' || r.status === 'pendiente' ? r.guests : 0), 0);
-      const totalTablesInShift = shiftReservations.reduce((s, r) => s + (r.status !== 'cancelada' ? (r.tableIds?.length || (r.tableId ? 1 : 0)) : 0), 0);
       const isMediodia = title.includes('Mediodía');
       const shiftKey = isMediodia ? 'mediodia' : 'noche';
       const defaultTime = isMediodia ? '12:30' : '20:30';
       
-      const guestPerc = shiftCapacity > 0 ? (totalGuestsInShift / shiftCapacity) * 100 : 0;
-      const tablePerc = shiftTableCapacity > 0 ? (totalTablesInShift / shiftTableCapacity) * 100 : 0;
-
       return (
-        <div>
-          <div className="sticky top-[150px] z-20 bg-luxury-black/95 backdrop-blur-md flex justify-between items-center mb-6 border-b border-stone-800 pb-3 pt-3 -mx-2 px-2 shadow-sm">
-            <h2 className="text-2xl font-serif text-gold">{title}</h2>
-            <div className="flex gap-6">
-              <div className="text-right flex items-baseline gap-2">
-                <p className="text-xl font-bold text-white">{Math.round(tablePerc)}%</p>
-                <p className="text-[8px] uppercase tracking-widest text-stone-500 font-bold">Ocupación Turno</p>
-              </div>
-              <div className="text-right flex items-baseline gap-2">
-                <p className="text-xl font-bold text-stone-400">{Math.round(guestPerc)}%</p>
-                <p className="text-[8px] uppercase tracking-widest text-stone-600 font-bold">Ocupación Personas</p>
-              </div>
-            </div>
-          </div>
-          {layout?.environments.map(env => { 
-            const reservationsInEnv = shiftReservations.filter(r => r.environmentId === env.id);
-            const currentGuests = reservationsInEnv.filter(r => r.status === 'confirmada' || r.status === 'pendiente').reduce((s,r)=>s+r.guests,0);
-            const currentTables = reservationsInEnv.filter(r => r.status !== 'cancelada').reduce((s,r)=>s+(r.tableIds?.length || (r.tableId ? 1 : 0)), 0);
-            
-            const guestPercEnv = env.maxCapacity>0?(currentGuests/env.maxCapacity)*100:0; 
-            const tablePercEnv = env.tables.length>0?(currentTables/env.tables.length)*100:0;
-            
-            const isFull = currentGuests >= env.maxCapacity || currentTables >= env.tables.length; 
-            const isExpanded = expandedEnvs[`${env.id}-${shiftKey}`];
-
-            const availableTables = env.tables.filter(table => !reservationsInEnv.some(res => res.status !== 'cancelada' && (res.tableIds?.includes(table.id) || res.tableId === table.id)));
-
-            return (
-              <div key={env.id} className="mb-8">
-                <div className="mb-4">
-                  <div className={`flex justify-between items-center mb-2 border-l-2 ${isFull ? 'border-red-500/70' : 'border-gold/50'} pl-3 cursor-pointer hover:bg-white/5 transition-colors py-1`} onClick={() => toggleEnvExpand(env.id, shiftKey)}>
-                    <div className="flex items-center gap-3">
-                      <h3 className={`text-lg font-serif ${isFull ? 'text-red-400' : 'text-gold'}`}>{env.name}</h3>
-                      <svg className={`w-4 h-4 text-stone-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+        <div className="space-y-6">
+          <div className="space-y-4">
+            {layout?.environments.map(env => { 
+              const reservationsInEnv = shiftReservations.filter(r => r.environmentId === env.id);
+              const currentGuests = reservationsInEnv.filter(r => r.status === 'confirmada' || r.status === 'pendiente').reduce((s,r)=>s+r.guests,0);
+              const currentTables = reservationsInEnv.filter(r => r.status !== 'cancelada').reduce((s,r)=>s+(r.tableIds?.length || (r.tableId ? 1 : 0)), 0);
+              
+              const tablePercEnv = env.tables.length>0?(currentTables/env.tables.length)*100:0;
+              const isFull = currentGuests >= env.maxCapacity || currentTables >= env.tables.length; 
+              const isExpanded = expandedEnvs[`${env.id}-${shiftKey}`];
+   
+              const availableTables = env.tables.filter(table => !reservationsInEnv.some(res => res.status !== 'cancelada' && (res.tableIds?.includes(table.id) || res.tableId === table.id)));
+              
+              // Fallback images for environments
+              const envImage = env.image || `https://picsum.photos/seed/${env.name}/400/200?blur=2`;
+   
+              return (
+                <div key={env.id} className="group bg-stone-900/20 rounded-lg border border-stone-800/50 overflow-hidden">
+                  <div 
+                    className={`flex items-center gap-4 p-3 cursor-pointer transition-all hover:bg-stone-800/30 ${isExpanded ? 'bg-stone-800/20' : ''}`}
+                    onClick={() => toggleEnvExpand(env.id, shiftKey)}
+                  >
+                    <div className="w-40 h-24 rounded overflow-hidden flex-shrink-0 border border-stone-700">
+                        <img src={envImage} alt={env.name} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" referrerPolicy="no-referrer" />
                     </div>
-                    <div className="flex gap-4">
-                      <div className="text-right flex items-baseline gap-2">
-                        <p className={`text-sm font-bold font-mono ${isFull ? 'text-red-400' : 'text-white'}`}>{Math.round(tablePercEnv)}%</p>
+                    <div className="flex-1">
+                        <div className="flex items-center gap-3">
+                            <h3 className={`text-lg font-serif tracking-tight ${isFull ? 'text-red-400' : 'text-stone-100 group-hover:text-gold'} transition-colors`}>{env.name}</h3>
+                            <div className={`p-0.5 rounded-full bg-stone-800/50 text-stone-500 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3 mt-1">
+                            <div className="flex-1 bg-stone-800 h-1 rounded-full overflow-hidden">
+                                <div className={`h-full transition-all duration-700 ${tablePercEnv >= 100 ?'bg-red-500':'bg-gold/60'}`} style={{width:`${tablePercEnv>100?100:tablePercEnv}%`}}></div>
+                            </div>
+                            <span className={`text-[10px] font-mono font-bold min-w-[30px] text-right ${isFull ? 'text-red-400' : 'text-stone-400'}`}>{Math.round(tablePercEnv)}%</span>
+                        </div>
+                    </div>
+                    <div className="text-right">
                         <p className="text-[8px] uppercase tracking-widest text-stone-500 font-bold">Ocupación</p>
-                      </div>
+                        <p className={`text-sm font-mono font-bold ${isFull ? 'text-red-400' : 'text-white'}`}>{currentTables}/{env.tables.length}</p>
                     </div>
                   </div>
-                  <div className="w-full bg-stone-800/50 h-1">
-                    <div className={`h-1 transition-all ${tablePercEnv >= 100 ?'bg-red-500':'bg-gold'}`} style={{width:`${tablePercEnv>100?100:tablePercEnv}%`}}></div>
-                  </div>
-                </div>
                 
                 {isExpanded && (
-                  <div className="w-full overflow-hidden rounded-sm border border-stone-800/50 bg-stone-900/20 animate-fadeIn">
-                    <table className="w-full text-left">
+                  <div className="border-t border-stone-800/50 animate-fadeIn">
+                    <table className="w-full text-left border-collapse">
                       <thead>
-                        <tr className="bg-stone-900/50">
-                          <th className="p-2 text-[10px] uppercase tracking-widest text-gold w-16">Hora</th>
-                          <th className="p-2 text-[10px] uppercase tracking-widest text-gold">Nombre</th>
-                          <th className="p-2 text-[10px] uppercase tracking-widest text-gold w-12 text-center">Cub.</th>
-                          <th className="p-2 text-[10px] uppercase tracking-widest text-gold w-24 text-center">Estado</th>
-                          <th className="p-2 text-[10px] uppercase tracking-widest text-gold w-20 text-right">Acciones</th>
+                        <tr className="bg-stone-900/40">
+                          <th className="py-1.5 px-4 text-[8px] uppercase tracking-widest text-stone-500 font-bold w-20">Hora</th>
+                          <th className="py-1.5 px-4 text-[8px] uppercase tracking-widest text-stone-500 font-bold">Reserva y Mesa</th>
+                          <th className="py-1.5 px-4 text-[8px] uppercase tracking-widest text-stone-500 font-bold w-16 text-center">Cub.</th>
+                          <th className="py-1.5 px-4 text-[8px] uppercase tracking-widest text-stone-500 font-bold w-24 text-center">Estado</th>
+                          <th className="py-1.5 px-4 text-[8px] uppercase tracking-widest text-stone-500 font-bold w-20 text-right">Acciones</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-stone-800/50">
+                      <tbody className="divide-y divide-stone-800/20">
                         {reservationsInEnv.map(res=>{ 
                           const isPending = res.status === 'pendiente';
                           const isCancelled = res.status === 'cancelada';
@@ -510,40 +512,36 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
                           return (
                             <tr key={res.id} 
                               onClick={() => openEditReservationModal(res)}
-                              className={`transition-colors text-sm group cursor-pointer
-                              ${isCancelled ? 'bg-stone-900/30 opacity-60' :
-                              isPending ? 'bg-stone-800/40 hover:bg-stone-800/60' :
-                              'bg-stone-800/20 hover:bg-stone-800/40'
+                              className={`transition-all duration-200 text-xs group/row cursor-pointer
+                              ${isCancelled ? 'bg-stone-950/40 opacity-40' :
+                              isPending ? 'bg-stone-800/10 hover:bg-stone-800/30' :
+                              'bg-transparent hover:bg-white/[0.02]'
                             }`}>
-                                <td className={`p-2 font-mono font-bold ${isCancelled ? 'text-stone-600 line-through' : 'text-white'}`}>{res.time}</td>
-                                <td className={`p-2 ${isCancelled ? 'text-stone-600 line-through' : 'text-stone-300'}`}>
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-semibold truncate max-w-[120px] sm:max-w-[200px]">{res.name}</span>
-                                    {hasSpecialNotes && (
-                                        <svg className="w-3.5 h-3.5 text-yellow-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                            <title>Notas especiales</title>
-                                            <path fillRule="evenodd" d="M8.257 3.099c.636-1.21 2.852-1.21 3.488 0l6.237 11.94c.64 1.222-.464 2.71-1.744 2.71H3.764c-1.28 0-2.384-1.488-1.744-2.71l6.237-11.94zM9 14a1 1 0 112 0 1 1 0 01-2 0zm1-7a1 1 0 00-1 1v4a1 1 0 102 0V9a1 1 0 00-1-1z" clipRule="evenodd"></path>
-                                        </svg>
-                                    )}
-                                    {!isCancelled && (!res.tableIds || res.tableIds.length === 0) && (
-                                        <svg className="w-3.5 h-3.5 text-red-500 animate-pulse flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                            <title>¡ALERTA! Sin mesa asignada</title>
-                                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"></path>
-                                        </svg>
-                                    )}
+                                <td className={`py-2 px-4 font-mono font-bold text-xs ${isCancelled ? 'text-stone-600 line-through' : 'text-gold'}`}>{res.time}</td>
+                                <td className={`py-2 px-4 ${isCancelled ? 'text-stone-600 line-through' : 'text-stone-300'}`}>
+                                  <div className="flex flex-col">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-bold text-stone-100 text-xs tracking-tight">{res.name}</span>
+                                      {hasSpecialNotes && (
+                                          <div className="w-1 h-1 rounded-full bg-yellow-500" title="Notas especiales"></div>
+                                      )}
+                                      {!isCancelled && (!res.tableIds || res.tableIds.length === 0) && (
+                                          <div className="w-1 h-1 rounded-full bg-red-500 animate-pulse" title="¡ALERTA! Sin mesa asignada"></div>
+                                      )}
+                                    </div>
+                                    {res.tableName && <div className="text-[8px] text-stone-500 font-medium uppercase tracking-widest">{res.tableName}</div>}
                                   </div>
-                                  {res.tableName && <div className="text-[10px] text-gold font-bold mt-0.5">{res.tableName}</div>}
                                 </td>
-                                <td className={`p-2 text-center font-bold ${isCancelled ? 'text-stone-600 line-through' : 'text-gold'}`}>{res.guests}</td>
-                                <td className="p-2 text-center">
-                                    {isPending && <span className="text-[9px] uppercase tracking-widest font-bold text-stone-400 bg-stone-900 px-2 py-1 rounded border border-stone-700">Pendiente</span>}
-                                    {isCancelled && <span className="text-[9px] uppercase tracking-widest font-bold text-red-400 bg-red-950 px-2 py-1 rounded border border-red-900">Cancelada</span>}
-                                    {!isPending && !isCancelled && <span className="text-[9px] uppercase tracking-widest font-bold text-green-400 bg-green-950 px-2 py-1 rounded border border-green-900">Confirmada</span>}
+                                <td className={`py-2 px-4 text-center font-mono text-xs font-bold ${isCancelled ? 'text-stone-600 line-through' : 'text-stone-200'}`}>{res.guests}</td>
+                                <td className="py-2 px-4 text-center">
+                                    {isPending && <span className="text-[7px] uppercase tracking-widest font-black text-gold/80 bg-gold/5 px-1.5 py-0.5 rounded-full border border-gold/20">Pendiente</span>}
+                                    {isCancelled && <span className="text-[7px] uppercase tracking-widest font-black text-stone-500 bg-stone-900 px-1.5 py-0.5 rounded-full border border-stone-800">Cancelada</span>}
+                                    {!isPending && !isCancelled && <span className="text-[7px] uppercase tracking-widest font-black text-emerald-400 bg-emerald-500/5 px-1.5 py-0.5 rounded-full border border-emerald-500/20">Confirmada</span>}
                                 </td>
-                                <td className="p-2 text-right">
-                                  <div className="flex items-center justify-end gap-1">
-                                      <button onClick={() => openEditReservationModal(res)} className="text-stone-500 hover:text-gold p-1.5 transition-colors" title="Editar reserva"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
-                                      <button onClick={() => setConfirmingDelete(res)} className="text-stone-500 hover:text-red-500 p-1.5 transition-colors" title="Eliminar reserva"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                                <td className="py-2 px-4 text-right">
+                                  <div className="flex items-center justify-end gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
+                                      <button onClick={(e) => { e.stopPropagation(); openEditReservationModal(res); }} className="text-stone-500 hover:text-gold p-1 transition-colors rounded hover:bg-gold/10"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
+                                      <button onClick={(e) => { e.stopPropagation(); setConfirmingDelete(res); }} className="text-stone-500 hover:text-red-500 p-1 transition-colors rounded hover:bg-red-500/10"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
                                   </div>
                                 </td>
                             </tr>
@@ -552,28 +550,29 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
                       </tbody>
                     </table>
                     
-                    {availableTables.length > 0 && (
-                      <button onClick={()=>openNewReservationModalForEnv(env.id, env.name, undefined, defaultTime)} className="w-full py-3 border-t border-dashed border-stone-700/50 text-stone-500 hover:text-gold hover:bg-gold/5 transition-colors flex items-center justify-center gap-2 text-[10px] uppercase tracking-widest font-bold">
-                        <Plus size={14} /> Nueva Reserva en {env.name}
-                      </button>
-                    )}
-                    
-                    <div className="p-4 border-t border-stone-800 bg-stone-900/30">
-                      <h4 className="text-[10px] uppercase tracking-widest text-stone-500 mb-3 font-bold">Mesas Disponibles</h4>
-                      <div className="flex flex-wrap gap-2">
+                    <div className="p-3 border-t border-stone-800 bg-stone-900/30">
+                      <div className="flex justify-between items-center mb-2">
+                        <h4 className="text-[8px] uppercase tracking-widest text-stone-500 font-bold">Mesas Disponibles</h4>
+                        {availableTables.length > 0 && (
+                          <button onClick={()=>openNewReservationModalForEnv(env.id, env.name, undefined, defaultTime)} className="text-gold hover:text-white transition-colors flex items-center gap-1 text-[8px] uppercase tracking-widest font-bold">
+                            <Plus size={10} /> Nueva Reserva
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
                         {availableTables.map(table => {
                           const isSelected = selectedTables[`${env.id}-${shiftKey}`]?.includes(table.id);
                           return (
                             <button
                               key={table.id}
                               onClick={() => handleTableClick(`${env.id}-${shiftKey}`, table.id)}
-                              className={`relative px-3 py-2 text-xs border rounded transition-colors ${isSelected ? 'bg-gold text-black border-gold font-bold' : 'border-stone-700 text-stone-300 hover:border-gold'}`}
+                              className={`relative px-2 py-1 text-[10px] border rounded transition-colors ${isSelected ? 'bg-gold text-black border-gold font-bold' : 'border-stone-700 text-stone-400 hover:border-gold'}`}
                             >
-                              {table.name} <span className="opacity-50 ml-1">({table.capacity})</span>
+                              {table.name} <span className="opacity-50 ml-0.5">({table.capacity})</span>
                             </button>
                           )
                         })}
-                        {availableTables.length === 0 && <p className="text-[10px] text-stone-600 italic">No hay mesas disponibles.</p>}
+                        {availableTables.length === 0 && <p className="text-[8px] text-stone-600 italic">No hay mesas disponibles.</p>}
                       </div>
                       {selectedTables[`${env.id}-${shiftKey}`]?.length > 0 && (
                         <button 
@@ -581,8 +580,8 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
                                openNewReservationModalForEnv(env.id, env.name, selectedTables[`${env.id}-${shiftKey}`], defaultTime);
                                setSelectedTables(prev => ({ ...prev, [`${env.id}-${shiftKey}`]: [] }));
                            }}
-                           className="mt-4 w-full py-3 bg-gold text-black text-[10px] uppercase tracking-widest font-bold rounded hover:bg-yellow-500 transition-colors">
-                          Reservar Mesas Seleccionadas
+                           className="mt-3 w-full py-2 bg-gold text-black text-[8px] uppercase tracking-widest font-bold rounded hover:bg-yellow-500 transition-colors">
+                          Reservar Seleccionadas
                         </button>
                       )}
                     </div>
@@ -592,6 +591,7 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
             ); 
           })}
         </div>
+      </div>
       );
     };
 
@@ -643,8 +643,13 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
         const shiftKey = isMediodia ? 'mediodia' : 'noche';
         
         return (
-            <div className="mb-8">
-                <h3 className="sticky top-[140px] z-10 bg-luxury-black/95 backdrop-blur-md text-xs text-stone-500 uppercase tracking-widest font-bold pt-4 pb-2 border-b border-stone-800 mb-4 -mx-4 px-4">{title}</h3>
+            <div className="mb-12">
+                <div className="sticky top-[140px] z-20 bg-luxury-black/95 backdrop-blur-md border-b border-stone-800 pb-3 pt-3 mb-6 flex justify-between items-end -mx-4 px-4">
+                    <div className="space-y-0.5">
+                        <p className="text-[9px] uppercase tracking-[0.2em] text-stone-500 font-bold">Turno</p>
+                        <h3 className="text-2xl font-serif text-gold leading-none">{title}</h3>
+                    </div>
+                </div>
                 {layout?.environments.length === 0 ? (
                     <p className="text-stone-600 italic text-center py-4">No hay ambientes configurados.</p>
                 ) : (
@@ -664,39 +669,54 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
                             const isExpanded = expandedEnvs[`${env.id}-${shiftKey}-mobile`];
 
                             return (
-                                <div key={env.id} className="bg-stone-900/40 border border-stone-800 rounded-lg p-4">
-                                    <div className="flex justify-between items-center mb-2 cursor-pointer" onClick={() => setExpandedEnvs(prev => ({...prev, [`${env.id}-${shiftKey}-mobile`]: !isExpanded}))}>
-                                        <div className="flex items-center gap-2">
-                                            <h4 className="text-lg font-serif text-white">{env.name}</h4>
-                                            <svg className={`w-4 h-4 text-stone-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className={`text-sm font-bold font-mono ${isFull ? 'text-red-400' : 'text-gold'}`}>{Math.round(tablePerc)}%</p>
-                                            <p className="text-[8px] uppercase tracking-widest text-stone-500 font-bold">Ocupación</p>
-                                        </div>
-                                    </div>
-                                    <div className="w-full bg-stone-800 h-2 rounded-full">
-                                        <div 
-                                            className={`h-2 rounded-full transition-all ${isFull ? 'bg-red-500' : 'bg-gold'}`} 
-                                            style={{ width: `${tablePerc > 100 ? 100 : tablePerc}%` }}>
-                                        </div>
-                                    </div>
-                                    {isExpanded && reservationsInEnv.length > 0 && (
-                                        <div className="space-y-3 mt-4 animate-fadeIn">
-                                            {reservationsInEnv.map(res => (
-                                                <div key={res.id} 
-                                                    onClick={() => openEditReservationModal(res)}
-                                                    className="flex justify-between items-center text-sm border-t border-stone-800 pt-2 cursor-pointer hover:bg-white/5 transition-colors">
-                                                    <div>
-                                                        <p className="font-bold text-white">{res.time} - {res.name}</p>
-                                                        <p className="text-[10px] text-gold">{res.tableName || 'Sin mesa'}</p>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <p className="font-bold text-gold">{res.guests} cub.</p>
-                                                        <p className={`text-[9px] uppercase font-bold ${res.status === 'confirmada' ? 'text-green-500' : res.status === 'pendiente' ? 'text-stone-400' : 'text-red-500'}`}>{res.status}</p>
-                                                    </div>
+                                <div key={env.id} className="group">
+                                    <div className="mb-4">
+                                        <div className={`flex justify-between items-center mb-3 border-l-2 ${isFull ? 'border-red-500' : 'border-gold/30'} pl-4 cursor-pointer transition-all py-1`} onClick={() => setExpandedEnvs(prev => ({...prev, [`${env.id}-${shiftKey}-mobile`]: !isExpanded}))}>
+                                            <div className="flex items-center gap-3">
+                                                <h4 className={`text-xl font-serif tracking-tight ${isFull ? 'text-red-400' : 'text-stone-100'}`}>{env.name}</h4>
+                                                <div className={`p-1 rounded-full bg-stone-800/50 text-stone-500 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                                                 </div>
-                                            ))}
+                                            </div>
+                                            <div className="text-right">
+                                                <p className={`text-lg font-mono font-bold ${isFull ? 'text-red-400' : 'text-white'}`}>{Math.round(tablePerc)}%</p>
+                                            </div>
+                                        </div>
+                                        <div className="w-full bg-stone-800/30 h-[2px] rounded-full overflow-hidden">
+                                            <div className={`h-full transition-all duration-700 ${tablePerc >= 100 ? 'bg-red-500' : 'bg-gold/60'}`} style={{ width: `${tablePerc > 100 ? 100 : tablePerc}%` }}></div>
+                                        </div>
+                                    </div>
+                                    {isExpanded && (
+                                        <div className="space-y-3 mt-4 animate-fadeIn">
+                                            {reservationsInEnv.length === 0 ? (
+                                                <p className="text-center text-stone-600 italic text-xs py-2">Sin reservas</p>
+                                            ) : (
+                                                reservationsInEnv.map(res => {
+                                                    const isCancelled = res.status === 'cancelada';
+                                                    const isPending = res.status === 'pendiente';
+                                                    return (
+                                                        <div key={res.id} 
+                                                            onClick={() => openEditReservationModal(res)}
+                                                            className={`flex justify-between items-center p-4 rounded-xl border border-stone-800/50 transition-all active:scale-[0.98] ${isCancelled ? 'bg-stone-950/40 opacity-40' : isPending ? 'bg-stone-900/40' : 'bg-stone-900/20'}`}>
+                                                            <div className="space-y-1">
+                                                                <div className="flex items-center gap-2">
+                                                                    <p className={`font-mono font-bold text-base ${isCancelled ? 'text-stone-600 line-through' : 'text-gold'}`}>{res.time}</p>
+                                                                    <p className={`font-bold text-base tracking-tight ${isCancelled ? 'text-stone-600 line-through' : 'text-stone-100'}`}>{res.name}</p>
+                                                                </div>
+                                                                <p className="text-[10px] uppercase tracking-widest text-stone-500 font-bold">{res.tableName || 'Sin mesa asignada'}</p>
+                                                            </div>
+                                                            <div className="text-right space-y-1">
+                                                                <p className={`font-mono font-bold text-base ${isCancelled ? 'text-stone-600' : 'text-stone-200'}`}>{res.guests} cub.</p>
+                                                                <div className="flex justify-end">
+                                                                    {isPending && <span className="text-[8px] uppercase tracking-widest font-black text-gold/80 bg-gold/5 px-2 py-0.5 rounded-full border border-gold/20">Pendiente</span>}
+                                                                    {isCancelled && <span className="text-[8px] uppercase tracking-widest font-black text-stone-500 bg-stone-900 px-2 py-0.5 rounded-full border border-stone-800">Cancelada</span>}
+                                                                    {!isPending && !isCancelled && <span className="text-[8px] uppercase tracking-widest font-black text-emerald-400 bg-emerald-500/5 px-2 py-0.5 rounded-full border border-emerald-500/20">Confirmada</span>}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -729,6 +749,17 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
   const guestPercentage = totalDayCapacity > 0 ? (totalDayGuests / totalDayCapacity) * 100 : 0;
   const tablePercentage = totalDayTables > 0 ? (totalReservedTables / totalDayTables) * 100 : 0;
 
+  // Shift metrics for sticky header
+  const middayGuests = middayReservations.reduce((s, r) => s + (r.status === 'confirmada' || r.status === 'pendiente' ? r.guests : 0), 0);
+  const middayTables = middayReservations.reduce((s, r) => s + (r.status !== 'cancelada' ? (r.tableIds?.length || (r.tableId ? 1 : 0)) : 0), 0);
+  const middayGuestPerc = middayCapacity > 0 ? (middayGuests / middayCapacity) * 100 : 0;
+  const middayTablePerc = middayTableCapacity > 0 ? (middayTables / middayTableCapacity) * 100 : 0;
+
+  const nightGuests = nightReservations.reduce((s, r) => s + (r.status === 'confirmada' || r.status === 'pendiente' ? r.guests : 0), 0);
+  const nightTables = nightReservations.reduce((s, r) => s + (r.status !== 'cancelada' ? (r.tableIds?.length || (r.tableId ? 1 : 0)) : 0), 0);
+  const nightGuestPerc = nightCapacity > 0 ? (nightGuests / nightCapacity) * 100 : 0;
+  const nightTablePerc = nightTableCapacity > 0 ? (nightTables / nightTableCapacity) * 100 : 0;
+
   const today = getArgentinaTime();
   const isTodaySelected = selectedDate.toDateString() === today.toDateString();
   const handleCalendarSelect = (e: React.ChangeEvent<HTMLInputElement>) => { const [y,m,d] = e.target.value.split('-').map(Number); const newDate = new Date(y,m-1,d); const todayCal = getArgentinaTime(); todayCal.setHours(0,0,0,0); if(newDate >= todayCal) setSelectedDate(newDate); };
@@ -739,52 +770,52 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
   return (
     <div className="px-6 md:px-12">
       {/* Unified Responsive Header */}
-      <div className="sticky top-0 z-30 bg-luxury-black/95 backdrop-blur-xl border-b border-stone-800 shadow-2xl no-print -mx-6 px-6 md:-mx-12 md:px-12 py-6 mb-8">
-        <div className="w-full flex flex-col lg:flex-row justify-between items-center gap-6">
+      <div className="sticky top-0 z-30 bg-luxury-black/95 backdrop-blur-xl border-b border-stone-800 shadow-2xl no-print -mx-6 px-6 md:-mx-12 md:px-12 py-3 mb-4">
+        <div className="w-full flex flex-col lg:flex-row justify-between items-center gap-4">
             
             {/* Left: Selected Date (Large) */}
-            <div className="flex-1 w-full lg:w-auto flex items-center justify-between lg:justify-start gap-6">
-                <div className="flex items-baseline gap-4">
-                    <span className="text-6xl md:text-7xl font-serif text-gold leading-none tracking-tighter">{selectedDate.getDate()}</span>
+            <div className="flex-1 w-full lg:w-auto flex items-center justify-between lg:justify-start gap-4">
+                <div className="flex items-baseline gap-3">
+                    <span className="text-4xl md:text-5xl font-serif text-gold leading-none tracking-tighter">{selectedDate.getDate()}</span>
                     <div className="flex flex-col">
-                        <span className="text-sm md:text-base text-white font-bold uppercase tracking-[0.2em]">{selectedDate.toLocaleDateString('es-AR', { month: 'long' })}</span>
-                        <span className="text-[10px] md:text-xs text-stone-500 uppercase tracking-[0.2em] font-medium">{selectedDate.toLocaleDateString('es-AR', { weekday: 'long' })}</span>
+                        <span className="text-xs md:text-sm text-white font-bold uppercase tracking-[0.1em]">{selectedDate.toLocaleDateString('es-AR', { month: 'long' })}</span>
+                        <span className="text-[9px] md:text-[10px] text-stone-500 uppercase tracking-[0.1em] font-medium">{selectedDate.toLocaleDateString('es-AR', { weekday: 'long' })}</span>
                     </div>
                 </div>
                 
                 {/* Mobile Create Button (Visible only on small screens) */}
                 <button 
                   onClick={openNewReservationModal}
-                  className="lg:hidden bg-gold hover:bg-gold-light text-black p-4 rounded-full shadow-lg shadow-gold/20 active:scale-95 transition-all"
+                  className="lg:hidden bg-gold hover:bg-gold-light text-black p-3 rounded-full shadow-lg shadow-gold/20 active:scale-95 transition-all"
                   aria-label="Nueva Reserva"
                 >
-                    <Plus size={24} />
+                    <Plus size={20} />
                 </button>
             </div>
 
             {/* Center: Day selection (navigation) */}
             <div className="flex-shrink-0 w-full lg:w-auto flex items-center justify-center">
-                <div className="flex items-center bg-stone-900/60 border border-stone-800 p-1 rounded-xl shadow-inner w-full lg:w-auto justify-between lg:justify-start">
+                <div className="flex items-center bg-stone-900/60 border border-stone-800 p-0.5 rounded-xl shadow-inner w-full lg:w-auto justify-between lg:justify-start">
                     <button 
                       onClick={() => handleDateChange(-1)} 
                       disabled={isTodaySelected} 
-                      className="p-3 text-stone-500 hover:text-gold transition-all disabled:opacity-20 disabled:cursor-not-allowed hover:bg-stone-800/50 rounded-lg" 
+                      className="p-2 text-stone-500 hover:text-gold transition-all disabled:opacity-20 disabled:cursor-not-allowed hover:bg-stone-800/50 rounded-lg" 
                       aria-label="Día anterior"
                     >
-                      <ChevronLeft size={24} />
+                      <ChevronLeft size={20} />
                     </button>
 
-                    <div className="flex items-center gap-2 mx-2 overflow-x-auto no-scrollbar py-1">
+                    <div className="flex items-center gap-1 mx-1 overflow-x-auto no-scrollbar py-0.5">
                         <button 
                           onClick={() => setSelectedDate(getArgentinaTime())} 
-                          className={`px-4 py-2 text-[10px] uppercase tracking-widest font-bold rounded-lg transition-all border shrink-0 ${isTodaySelected ? 'bg-gold text-black border-gold shadow-lg shadow-gold/20' : 'border-stone-700 text-stone-400 hover:border-stone-500 hover:text-white'}`}
+                          className={`px-3 py-1.5 text-[9px] uppercase tracking-widest font-bold rounded-lg transition-all border shrink-0 ${isTodaySelected ? 'bg-gold text-black border-gold shadow-lg shadow-gold/20' : 'border-stone-700 text-stone-400 hover:border-stone-500 hover:text-white'}`}
                         >
                           Hoy
                         </button>
                         
-                        <div className="w-px h-8 bg-stone-800 mx-1 shrink-0"></div>
+                        <div className="w-px h-6 bg-stone-800 mx-0.5 shrink-0"></div>
 
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-0.5">
                             {datesToShow.map(date => { 
                                 const dayKey = dayKeys[date.getDay()]; 
                                 const daySetting = settings?.days[dayKey]; 
@@ -801,27 +832,27 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
                                     key={date.toISOString()} 
                                     onClick={() => setSelectedDate(date)} 
                                     disabled={!isOpen} 
-                                    className={`group relative flex flex-col items-center justify-center min-w-[50px] py-2 rounded-lg transition-all border shrink-0 ${isSelected ? 'bg-gold/10 border-gold/50 text-gold shadow-lg shadow-gold/5' : 'border-transparent text-stone-500 hover:text-stone-300 hover:bg-stone-800/30'} ${!isOpen ? 'opacity-30 cursor-not-allowed':''}`}
+                                    className={`group relative flex flex-col items-center justify-center min-w-[42px] py-1.5 rounded-lg transition-all border shrink-0 ${isSelected ? 'bg-gold/10 border-gold/50 text-gold shadow-lg shadow-gold/5' : 'border-transparent text-stone-500 hover:text-stone-300 hover:bg-stone-800/30'} ${!isOpen ? 'opacity-30 cursor-not-allowed':''}`}
                                   >
-                                      <span className="text-[8px] font-bold uppercase tracking-widest mb-0.5">{dayName}</span>
-                                      <span className="font-serif text-lg leading-none">{date.getDate()}</span>
-                                      {isSelected && <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-gold rounded-full"></div>}
+                                      <span className="text-[7px] font-bold uppercase tracking-widest mb-0.5">{dayName}</span>
+                                      <span className="font-serif text-base leading-none">{date.getDate()}</span>
+                                      {isSelected && <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-gold rounded-full"></div>}
                                   </button>
                                 ); 
                             })}
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-0.5">
                         <button 
                           onClick={() => handleDateChange(1)} 
-                          className="p-3 text-stone-500 hover:text-gold transition-all hover:bg-stone-800/50 rounded-lg" 
+                          className="p-2 text-stone-500 hover:text-gold transition-all hover:bg-stone-800/50 rounded-lg" 
                           aria-label="Día siguiente"
                         >
-                          <ChevronRight size={24} />
+                          <ChevronRight size={20} />
                         </button>
 
-                        <div className="w-px h-8 bg-stone-800 mx-1"></div>
+                        <div className="w-px h-6 bg-stone-800 mx-0.5"></div>
 
                         <label htmlFor="calendar-picker-unified" className="relative cursor-pointer group">
                             <input 
@@ -832,8 +863,8 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
                               onChange={handleCalendarSelect} 
                               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                             />
-                            <div className="p-3 text-stone-500 group-hover:text-gold transition-all">
-                              <Calendar size={24} />
+                            <div className="p-2 text-stone-500 group-hover:text-gold transition-all">
+                              <Calendar size={20} />
                             </div>
                         </label>
                     </div>
@@ -844,43 +875,79 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
             <div className="hidden lg:flex flex-1 justify-end">
                 <button 
                   onClick={openNewReservationModal}
-                  className="bg-gold hover:bg-gold-light text-black px-8 py-4 rounded-full font-bold uppercase tracking-[0.2em] text-xs flex items-center gap-3 transition-all shadow-xl shadow-gold/20 active:scale-95 group"
+                  className="bg-gold hover:bg-gold-light text-black px-6 py-3 rounded-full font-bold uppercase tracking-[0.15em] text-[10px] flex items-center gap-2 transition-all shadow-xl shadow-gold/20 active:scale-95 group"
                 >
-                    <Plus size={20} className="group-hover:rotate-90 transition-transform duration-300" />
+                    <Plus size={18} className="group-hover:rotate-90 transition-transform duration-300" />
                     Nueva Reserva
                 </button>
             </div>
         </div>
 
         {/* Occupancy Summary Bar (Integrated) */}
-        <div className="mt-6 pt-6 border-t border-stone-800/50 flex flex-col sm:flex-row items-center justify-between gap-8">
-            <div className="flex items-center gap-8 w-full sm:w-auto">
+        <div className="mt-3 pt-3 border-t border-stone-800/50 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-6 w-full sm:w-auto">
                 <div className="flex flex-col">
-                    <span className="text-[10px] uppercase tracking-widest text-stone-500 font-bold mb-1">Ocupación del Día (Mesas)</span>
-                    <div className="flex items-center gap-3">
-                        <span className="font-mono text-white font-bold text-xl">{totalReservedTables} <span className="text-stone-600 text-sm">/ {totalDayTables}</span></span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${tablePercentage > 90 ? 'bg-red-500/20 text-red-500' : 'bg-gold/20 text-gold'}`}>
+                    <span className="text-[9px] uppercase tracking-widest text-stone-500 font-bold mb-0.5">Ocupación del Día (Mesas)</span>
+                    <div className="flex items-center gap-2">
+                        <span className="font-mono text-white font-bold text-lg">{totalReservedTables} <span className="text-stone-600 text-xs">/ {totalDayTables}</span></span>
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${tablePercentage > 90 ? 'bg-red-500/20 text-red-500' : 'bg-gold/20 text-gold'}`}>
                             {Math.round(tablePercentage)}%
                         </span>
                     </div>
                 </div>
                 <div className="flex flex-col">
-                    <span className="text-[10px] uppercase tracking-widest text-stone-600 font-bold mb-1">Ocupación del Día (Personas)</span>
-                    <div className="flex items-center gap-3">
-                        <span className="font-mono text-stone-400 font-bold text-xl">{totalDayGuests} <span className="text-stone-700 text-sm">/ {totalDayCapacity}</span></span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded bg-stone-800 text-stone-400`}>
+                    <span className="text-[9px] uppercase tracking-widest text-stone-600 font-bold mb-0.5">Ocupación del Día (Personas)</span>
+                    <div className="flex items-center gap-2">
+                        <span className="font-mono text-stone-400 font-bold text-lg">{totalDayGuests} <span className="text-stone-700 text-xs">/ {totalDayCapacity}</span></span>
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded bg-stone-800 text-stone-400`}>
                             {Math.round(guestPercentage)}%
                         </span>
                     </div>
                 </div>
             </div>
-            <div className="flex-1 w-full max-w-md bg-stone-900/50 h-1.5 rounded-full overflow-hidden">
-                <div className={`h-1.5 rounded-full transition-all duration-1000 ease-out ${tablePercentage > 90 ? 'bg-red-500' : 'bg-gold'}`} style={{ width: `${tablePercentage > 100 ? 100 : tablePercentage}%` }}></div>
+            <div className="flex-1 w-full max-w-md bg-stone-900/50 h-1 rounded-full overflow-hidden">
+                <div className={`h-1 rounded-full transition-all duration-1000 ease-out ${tablePercentage > 90 ? 'bg-red-500' : 'bg-gold'}`} style={{ width: `${tablePercentage > 100 ? 100 : tablePercentage}%` }}></div>
             </div>
             <div className="hidden sm:flex items-center gap-4">
-                <button onClick={handlePrint} className="no-print text-stone-500 hover:text-gold transition-colors p-1.5" title="Imprimir listado del día">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                <button onClick={handlePrint} className="no-print text-stone-500 hover:text-gold transition-colors p-1" title="Imprimir listado del día">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                 </button>
+            </div>
+        </div>
+
+        {/* Shift Specific Sticky Headers */}
+        <div className="hidden md:grid grid-cols-2 gap-8 mt-3 pt-3 border-t border-stone-800/30">
+            <div className="flex items-center justify-between bg-stone-900/40 p-2 rounded-lg border border-stone-800/50">
+                <div className="flex items-center gap-2">
+                    <div className="w-0.5 h-6 bg-gold rounded-full"></div>
+                    <span className="text-[10px] font-serif text-gold uppercase tracking-widest">Turno Mediodía</span>
+                </div>
+                <div className="flex gap-4">
+                    <div className="text-right">
+                        <p className="text-[7px] uppercase tracking-widest text-stone-500 font-bold">Mesas</p>
+                        <p className="text-[10px] font-mono font-bold text-white leading-none">{Math.round(middayTablePerc)}%</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-[7px] uppercase tracking-widest text-stone-500 font-bold">Personas</p>
+                        <p className="text-[10px] font-mono font-bold text-stone-400 leading-none">{Math.round(middayGuestPerc)}%</p>
+                    </div>
+                </div>
+            </div>
+            <div className="flex items-center justify-between bg-stone-900/40 p-2 rounded-lg border border-stone-800/50">
+                <div className="flex items-center gap-2">
+                    <div className="w-0.5 h-6 bg-gold rounded-full"></div>
+                    <span className="text-[10px] font-serif text-gold uppercase tracking-widest">Turno Noche</span>
+                </div>
+                <div className="flex gap-4">
+                    <div className="text-right">
+                        <p className="text-[7px] uppercase tracking-widest text-stone-500 font-bold">Mesas</p>
+                        <p className="text-[10px] font-mono font-bold text-white leading-none">{Math.round(nightTablePerc)}%</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-[7px] uppercase tracking-widest text-stone-500 font-bold">Personas</p>
+                        <p className="text-[10px] font-mono font-bold text-stone-400 leading-none">{Math.round(nightGuestPerc)}%</p>
+                    </div>
+                </div>
             </div>
         </div>
       </div>
