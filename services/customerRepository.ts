@@ -52,9 +52,13 @@ export const findOrCreateCustomer = async (
     reducedMobility?: boolean,
     hasChildren?: boolean
 ): Promise<string> => {
+    if (!phone || phone.trim() === '') {
+        throw new Error("Por favor, ingrese un número de teléfono.");
+    }
+
     const normalizedPhone = normalizePhoneNumber(phone);
-    if (!normalizedPhone) {
-        throw new Error("El número de teléfono proporcionado es inválido.");
+    if (!normalizedPhone || normalizedPhone.length < 6) {
+        throw new Error("El número de teléfono no parece válido. Por favor, ingrese un número con código de área (ej: 3424066887).");
     }
 
     try {

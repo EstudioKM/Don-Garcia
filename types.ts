@@ -15,9 +15,11 @@ export interface Reservation {
   date: any; // Se usará Firebase Timestamp
   time: string;
   guests: number;
+  duration?: number; // Duration in minutes
   specialRequests?: string;
   status: 'confirmada' | 'pendiente' | 'cancelada';
   tableId?: string;
+  tableIds?: string[]; // Array of table IDs if multiple tables are joined
   tableName?: string;
   environmentId?: string;
   environmentName?: string;
@@ -77,6 +79,7 @@ export interface Table {
   id: string;
   name: string;
   capacity: number;
+  joinableWith?: string[]; // IDs of tables this table can be joined with
 }
 
 export interface Environment {

@@ -133,7 +133,13 @@ export const listenToAllReservations = (callback: (reservations: Reservation[]) 
 export const createReservation = async (reservationData: Omit<Reservation, 'id'>, customerId: string) => {
     try {
         const dataWithCustomer = { ...reservationData, customerId };
-        const docRef = await addDoc(collection(db, COLLECTION_NAME), dataWithCustomer);
+        
+        // Remove any undefined fields to prevent Firestore errors
+        const cleanData = Object.fromEntries(
+            Object.entries(dataWithCustomer).filter(([_, v]) => v !== undefined)
+        );
+
+        const docRef = await addDoc(collection(db, COLLECTION_NAME), cleanData);
         
         // Link this reservation back to the customer
         await addReservationToCustomer(customerId, docRef.id);
@@ -148,7 +154,13 @@ export const createReservation = async (reservationData: Omit<Reservation, 'id'>
 export const updateReservation = async (reservationId: string, updates: Partial<Reservation>) => {
     try {
         const reservationRef = doc(db, COLLECTION_NAME, reservationId);
-        await updateDoc(reservationRef, updates);
+        
+        // Remove any undefined fields to prevent Firestore errors
+        const cleanUpdates = Object.fromEntries(
+            Object.entries(updates).filter(([_, v]) => v !== undefined)
+        );
+
+        await updateDoc(reservationRef, cleanUpdates);
         return true;
     } catch (error) {
         console.error("Error updating reservation:", error);

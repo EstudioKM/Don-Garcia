@@ -10,6 +10,7 @@ import { Reservation, RestaurantSettings, Layout } from '../types';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { getArgentinaTime } from '../utils/dateUtils';
+import { checkAvailability } from '../utils/reservationLogic';
 
 const DietaryOption: React.FC<{ label: string; selected: boolean; onClick: () => void }> = ({ label, selected, onClick }) => (
   <button type="button" onClick={onClick} className={`px-4 py-2 text-xs rounded-full border transition-all ${selected ? 'bg-gold text-black border-gold' : 'bg-transparent border-stone-700 text-stone-400 hover:border-gold'}`}>
@@ -118,7 +119,7 @@ const ReservationForm: React.FC<ReservationFormProps> = ({ formId, onSubmittingC
     try {
         const reservationDate = new Date(dataToSubmit.date + 'T00:00:00-03:00'); // Use Argentina timezone offset
         const reservationsOnDate = await getReservationsForDate(reservationDate);
-        const confirmedReservations = reservationsOnDate.filter(r => r.status === 'confirmada');
+        const activeReservations = reservationsOnDate.filter(r => r.status !== 'cancelada');
         
         const dayIndex = reservationDate.getUTCDay();
         const dayKeys = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
@@ -130,31 +131,26 @@ const ReservationForm: React.FC<ReservationFormProps> = ({ formId, onSubmittingC
             throw new Error("El turno seleccionado no está activo o es inválido.");
         }
 
-        const totalLayoutCapacity = layout?.environments.reduce((sum, env) => sum + env.maxCapacity, 0) || 0;
-
-        const reservationsForShift = confirmedReservations.filter(r => {
-            const hour = parseInt(r.time.split(':')[0]);
-            return shiftKey === 'mediodia' ? hour < 16 : hour >= 16;
-        });
-
-        const totalGuestsForShift = reservationsForShift.reduce((sum, r) => sum + r.guests, 0);
-
-        if (totalGuestsForShift + Number(dataToSubmit.guests) > totalLayoutCapacity) {
-            await findAndShowAlternatives('shift_full');
-            return;
-        }
-
         const selectedEnv = layout?.environments.find(env => env.id === dataToSubmit.environmentId);
         if (!selectedEnv) throw new Error("Ambiente seleccionado no es válido.");
 
-        const guestsInSelectedEnvForShift = reservationsForShift
-            .filter(r => r.environmentId === dataToSubmit.environmentId)
-            .reduce((sum, r) => sum + r.guests, 0);
+        const availability = checkAvailability(
+            selectedEnv,
+            activeReservations,
+            dataToSubmit.time,
+            Number(dataToSubmit.guests)
+        );
 
-        if (guestsInSelectedEnvForShift + Number(dataToSubmit.guests) > selectedEnv.maxCapacity) {
+        if (!availability.available) {
             await findAndShowAlternatives('environment_full');
             return;
         }
+
+        const tableIds = availability.tableIds || [];
+        const tableId = tableIds.length === 1 ? tableIds[0] : null;
+        const tableName = tableIds.length > 0 
+          ? tableIds.map(id => selectedEnv.tables.find(t => t.id === id)?.name).filter(Boolean).join(' + ') 
+          : null;
       
       const customerId = await findOrCreateCustomer(
         dataToSubmit.phone, 
@@ -176,12 +172,16 @@ const ReservationForm: React.FC<ReservationFormProps> = ({ formId, onSubmittingC
         status: 'pendiente',
         environmentId: dataToSubmit.environmentId,
         environmentName,
+        tableId,
+        tableIds,
+        tableName,
         dietaryRestrictions: dataToSubmit.dietaryRestrictions,
         reducedMobility: dataToSubmit.reducedMobility,
         hasChildren: dataToSubmit.hasChildren,
         occasion: dataToSubmit.occasion,
         specialRequests: dataToSubmit.specialRequests,
         customerId: customerId,
+        duration: 120, // Default duration
       };
 
       const newReservationRef = await createReservation(dataToCreate, customerId);
@@ -253,19 +253,17 @@ const ReservationForm: React.FC<ReservationFormProps> = ({ formId, onSubmittingC
         message = `Disculpe, no hay suficiente disponibilidad en "${selectedEnv?.name}" para la cantidad de personas seleccionada.`;
         
         if (layout && shift) {
-            const reservationsForShift = confirmedReservations.filter(r => {
-                const hour = parseInt(r.time.split(':')[0]);
-                return (shift === 'mediodia' ? hour < 16 : hour >= 16);
-            });
-            
             for (const env of layout.environments) {
                 if (env.id === environmentId) continue;
                 
-                const guestsInEnv = reservationsForShift
-                    .filter(r => r.environmentId === env.id)
-                    .reduce((sum, r) => sum + r.guests, 0);
+                const availability = checkAvailability(
+                    env,
+                    confirmedReservations,
+                    formData.time,
+                    Number(guests)
+                );
 
-                if (guestsInEnv + Number(guests) <= env.maxCapacity) {
+                if (availability.available) {
                     alternatives.push({
                         type: 'environment',
                         label: `Probar en ${env.name}`,

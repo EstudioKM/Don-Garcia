@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getLayout, saveLayout } from '../../services/layoutRepository';
 import { Layout, Environment, Table } from '../../types';
 import { produce } from 'immer';
-import { Plus, Trash2, Calculator, X } from 'lucide-react';
+import { Plus, Trash2, Calculator, X, Link } from 'lucide-react';
 
 const AdminLayout: React.FC = () => {
   const [layout, setLayout] = useState<Layout | null>(null);
@@ -10,6 +10,7 @@ const AdminLayout: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [envToDelete, setEnvToDelete] = useState<number | null>(null);
+  const [editingTableJoin, setEditingTableJoin] = useState<{ envIndex: number, tableIndex: number } | null>(null);
 
   useEffect(() => {
     const fetchLayout = async () => {
@@ -101,9 +102,49 @@ const AdminLayout: React.FC = () => {
   
   const deleteTable = (envIndex: number, tableIndex: number) => {
       const nextState = produce(layout, draftState => {
-        draftState?.environments[envIndex].tables.splice(tableIndex, 1);
+        const env = draftState?.environments[envIndex];
+        if (!env) return;
+        
+        const tableIdToDelete = env.tables[tableIndex].id;
+        
+        // Remove from other tables' joinableWith arrays
+        env.tables.forEach(table => {
+          if (table.joinableWith) {
+            table.joinableWith = table.joinableWith.filter(id => id !== tableIdToDelete);
+          }
+        });
+        
+        env.tables.splice(tableIndex, 1);
       });
       setLayout(nextState!);
+  };
+
+  const toggleTableJoin = (envIndex: number, targetTableId: string) => {
+    if (!layout || !editingTableJoin) return;
+    const { tableIndex } = editingTableJoin;
+    
+    const nextState = produce(layout, draftState => {
+      const currentTable = draftState.environments[envIndex].tables[tableIndex];
+      const targetTable = draftState.environments[envIndex].tables.find(t => t.id === targetTableId);
+      
+      if (!currentTable || !targetTable) return;
+      
+      if (!currentTable.joinableWith) currentTable.joinableWith = [];
+      if (!targetTable.joinableWith) targetTable.joinableWith = [];
+
+      const currentHasTarget = currentTable.joinableWith.includes(targetTableId);
+      
+      if (currentHasTarget) {
+        // Remove bidirectional link
+        currentTable.joinableWith = currentTable.joinableWith.filter(id => id !== targetTableId);
+        targetTable.joinableWith = targetTable.joinableWith.filter(id => id !== currentTable.id);
+      } else {
+        // Add bidirectional link
+        currentTable.joinableWith.push(targetTableId);
+        targetTable.joinableWith.push(currentTable.id);
+      }
+    });
+    setLayout(nextState);
   };
 
   if (loading) return <div className="text-white text-center p-10">Cargando diseño del salón...</div>;
@@ -135,6 +176,49 @@ const AdminLayout: React.FC = () => {
                 Eliminar
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Table Join Modal */}
+      {editingTableJoin !== null && layout && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-stone-900 border border-stone-800 p-8 rounded-2xl max-w-md w-full shadow-2xl animate-scaleIn relative">
+            <button 
+              onClick={() => setEditingTableJoin(null)}
+              className="absolute top-4 right-4 text-stone-500 hover:text-white transition-colors"
+            >
+              <X size={24} />
+            </button>
+            <div className="w-16 h-16 bg-gold/10 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Link className="text-gold" size={32} />
+            </div>
+            <h4 className="text-xl font-serif text-white text-center mb-2">Unir Mesas</h4>
+            <p className="text-stone-400 text-center text-sm mb-6">
+              Selecciona las mesas que se pueden unir con "{layout.environments[editingTableJoin.envIndex].tables[editingTableJoin.tableIndex].name}".
+            </p>
+            <div className="max-h-60 overflow-y-auto space-y-2 mb-8 pr-2 custom-scrollbar">
+              {layout.environments[editingTableJoin.envIndex].tables.map(table => {
+                if (table.id === layout.environments[editingTableJoin.envIndex].tables[editingTableJoin.tableIndex].id) return null;
+                const isJoined = layout.environments[editingTableJoin.envIndex].tables[editingTableJoin.tableIndex].joinableWith?.includes(table.id);
+                return (
+                  <button
+                    key={table.id}
+                    onClick={() => toggleTableJoin(editingTableJoin.envIndex, table.id)}
+                    className={`w-full flex items-center justify-between p-3 rounded-lg border transition-all ${isJoined ? 'bg-gold/10 border-gold text-white' : 'bg-stone-950 border-stone-800 text-stone-400 hover:border-stone-600'}`}
+                  >
+                    <span className="font-medium">{table.name}</span>
+                    <span className="text-xs">Cap: {table.capacity}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <button 
+              onClick={() => setEditingTableJoin(null)}
+              className="w-full py-3 px-4 bg-gold text-black rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-white transition-colors shadow-lg shadow-gold/20"
+            >
+              Cerrar
+            </button>
           </div>
         </div>
       )}
@@ -259,12 +343,22 @@ const AdminLayout: React.FC = () => {
                           className="w-7 bg-transparent text-white outline-none text-center text-xs font-bold"
                         />
                       </div>
-                      <button 
-                        onClick={() => deleteTable(envIndex, tableIndex)} 
-                        className="flex-shrink-0 p-1 text-stone-700 hover:text-red-500 hover:bg-red-500/10 rounded transition-all opacity-0 group-hover/table:opacity-100"
-                      >
-                        <X size={14} />
-                      </button>
+                      <div className="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover/table:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => setEditingTableJoin({ envIndex, tableIndex })}
+                          className={`p-1 rounded transition-all ${table.joinableWith?.length ? 'text-gold hover:bg-gold/10' : 'text-stone-500 hover:text-gold hover:bg-gold/10'}`}
+                          title="Unir con otras mesas"
+                        >
+                          <Link size={14} />
+                        </button>
+                        <button 
+                          onClick={() => deleteTable(envIndex, tableIndex)} 
+                          className="p-1 text-stone-700 hover:text-red-500 hover:bg-red-500/10 rounded transition-all"
+                          title="Eliminar Mesa"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
                     </div>
                   ))}
                   

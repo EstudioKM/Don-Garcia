@@ -25,6 +25,7 @@ import { sendReservationWebhook } from '../services/webhookService';
 import { Timestamp } from 'firebase/firestore';
 import { Reservation, RestaurantSettings, Layout, Environment } from '../types';
 import { getArgentinaTime } from '../utils/dateUtils';
+import { checkAvailability } from '../utils/reservationLogic';
 
 interface ReservationFlowProps {
   onSubmittingChange: (isSubmitting: boolean) => void;
@@ -197,6 +198,7 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
     if (formData.date) {
       const fetchReservations = async () => {
         setIsCheckingAvailability(true);
+        setDateReservations([]); // Clear previous reservations
         try {
           const dateObj = new Date(formData.date + 'T00:00:00-03:00');
           const res = await getReservationsForDate(dateObj);
@@ -285,10 +287,59 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
   }, [formData.date, settings]);
 
   const availableTimes = useMemo(() => {
-    if (formData.shift === 'mediodia') return ['12:00', '12:30', '13:00', '13:30', '14:00'];
-    if (formData.shift === 'noche') return ['20:30', '21:00', '21:30', '22:00', '22:30'];
-    return [];
-  }, [formData.shift]);
+    let times: string[] = [];
+    if (formData.shift === 'mediodia') times = ['12:00', '12:30', '13:00', '13:30', '14:00'];
+    else if (formData.shift === 'noche') times = ['20:30', '21:00', '21:30', '22:00', '22:30'];
+    else return [];
+
+    if (!layout || !settings || !formData.date) return times;
+
+    // Get active environments for this shift
+    let activeEnvs = layout.environments || [];
+    const specialDay = settings.specialDays?.find(sd => sd.date === formData.date);
+    const shiftKey = formData.shift as 'mediodia' | 'noche';
+
+    if (specialDay) {
+      const activeEnvIds = specialDay.shifts[shiftKey]?.activeEnvironments;
+      if (activeEnvIds && activeEnvIds.length > 0) {
+        activeEnvs = layout.environments.filter(env => activeEnvIds.includes(env.id));
+      }
+    } else {
+      const dateObj = new Date(formData.date + 'T00:00:00-03:00');
+      const dayIndex = dateObj.getUTCDay();
+      const dayKeys = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+      const dayKey = dayKeys[dayIndex] as keyof RestaurantSettings['days'];
+      const daySettings = settings.days[dayKey];
+      
+      const activeEnvIds = daySettings?.shifts[shiftKey]?.activeEnvironments;
+      if (activeEnvIds && activeEnvIds.length > 0) {
+        activeEnvs = layout.environments.filter(env => activeEnvIds.includes(env.id));
+      }
+    }
+
+    if (activeEnvs.length === 0) activeEnvs = layout.environments;
+
+    // Filter times where at least one active environment has availability for the requested guests
+    const filteredTimes = times.filter(time => {
+      return activeEnvs.some(env => {
+        const availability = checkAvailability(
+          env,
+          dateReservations,
+          time,
+          Number(formData.guests)
+        );
+        return availability.available;
+      });
+    });
+
+    // Fallback: If filtering is too aggressive (e.g. no tables fit the group size even if empty),
+    // show all times to let the user proceed and handle it in the next step or with a message.
+    if (filteredTimes.length === 0 && times.length > 0 && !isCheckingAvailability) {
+      return times;
+    }
+
+    return filteredTimes;
+  }, [formData.shift, formData.guests, formData.date, layout, settings, dateReservations, isCheckingAvailability]);
 
   const filteredEnvironments = useMemo(() => {
     if (!layout || !settings || !formData.date || !formData.shift) return layout?.environments || [];
@@ -315,22 +366,36 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
       }
     }
 
-    // Filter by capacity
-    const shiftKey = formData.shift as 'mediodia' | 'noche';
-    const reservationsForShift = dateReservations.filter(r => {
-        const hour = parseInt(r.time.split(':')[0]);
-        return shiftKey === 'mediodia' ? hour < 16 : hour >= 16;
-    });
-
+    // Filter by capacity and table availability
     return activeEnvs.filter(env => {
+        const shiftKey = formData.shift as 'mediodia' | 'noche';
+        const reservationsForShift = dateReservations.filter(r => {
+            const hour = parseInt(r.time.split(':')[0]);
+            return shiftKey === 'mediodia' ? hour < 16 : hour >= 16;
+        });
+
         const guestsInEnv = reservationsForShift
             .filter(r => r.environmentId === env.id && r.status !== 'cancelada')
             .reduce((sum, r) => sum + Number(r.guests), 0);
         
-        return (guestsInEnv + Number(formData.guests)) <= env.maxCapacity;
+        // Coarse check by total capacity
+        if ((guestsInEnv + Number(formData.guests)) > env.maxCapacity) return false;
+
+        // Fine check by table availability if time is selected
+        if (formData.time) {
+          const availability = checkAvailability(
+            env,
+            dateReservations,
+            formData.time,
+            Number(formData.guests)
+          );
+          return availability.available;
+        }
+
+        return true;
     });
 
-  }, [layout, settings, formData.date, formData.shift, formData.guests, dateReservations]);
+  }, [layout, settings, formData.date, formData.shift, formData.time, formData.guests, dateReservations]);
 
   const handleFinalSubmit = async () => {
     setStep('confirming');
@@ -393,6 +458,29 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
       }
       // --- END CAPACITY CHECK ---
 
+      // --- TABLE ASSIGNMENT ---
+      const availability = checkAvailability(
+        selectedEnv,
+        confirmedReservations,
+        formData.time,
+        Number(formData.guests)
+      );
+
+      if (!availability.available) {
+        setError(`Disculpe, no hay mesas disponibles para ${formData.guests} personas en el horario y sector seleccionado.`);
+        setStep('sector');
+        onSubmittingChange(false);
+        return;
+      }
+
+      const tableIds = availability.tableIds || [];
+      const tableId = tableIds.length === 1 ? tableIds[0] : null;
+      
+      // Get table names for the assigned tables
+      const assignedTables = selectedEnv.tables.filter(t => tableIds.includes(t.id));
+      const tableName = assignedTables.map(t => t.name).join(' + ') || null;
+      // --- END TABLE ASSIGNMENT ---
+
       const customerId = await findOrCreateCustomer(
         formData.phone, 
         formData.name,
@@ -412,6 +500,9 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
         status: 'pendiente',
         environmentId: formData.environmentId,
         environmentName: selectedEnv?.name || '',
+        tableId,
+        tableIds,
+        tableName,
         specialRequests: formData.specialRequests,
         dietaryRestrictions: formData.dietaryRestrictions,
         reducedMobility: formData.reducedMobility,
@@ -627,22 +718,40 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {availableTimes.map(t => (
-                <button
-                  key={t}
-                  onClick={() => {
-                    setFormData(prev => ({ ...prev, time: t }));
-                    nextStep();
-                  }}
-                  className={`py-5 rounded-2xl border transition-all text-xl font-bold flex items-center justify-center group ${
-                    formData.time === t 
-                    ? 'bg-gold text-black border-gold shadow-[0_0_30px_rgba(176,141,72,0.3)] scale-105 z-10' 
-                    : 'bg-stone-900/30 border-white/10 text-stone-300 hover:border-white/30 hover:bg-white/5'
-                  }`}
-                >
-                  {t}
-                </button>
-              ))}
+              {isCheckingAvailability ? (
+                <div className="col-span-full flex flex-col items-center justify-center py-12 space-y-4">
+                  <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+                  <p className="text-stone-400 text-sm uppercase tracking-widest">Buscando horarios...</p>
+                </div>
+              ) : availableTimes.length > 0 ? (
+                availableTimes.map(t => (
+                  <button
+                    key={t}
+                    onClick={() => {
+                      setFormData(prev => ({ ...prev, time: t }));
+                      nextStep();
+                    }}
+                    className={`py-5 rounded-2xl border transition-all text-xl font-bold flex items-center justify-center group ${
+                      formData.time === t 
+                      ? 'bg-gold text-black border-gold shadow-[0_0_30px_rgba(176,141,72,0.3)] scale-105 z-10' 
+                      : 'bg-stone-900/30 border-white/10 text-stone-300 hover:border-white/30 hover:bg-white/5'
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))
+              ) : (
+                <div className="col-span-full p-8 bg-red-500/10 border border-red-500/30 rounded-2xl text-center space-y-4">
+                  <AlertCircle className="w-8 h-8 text-red-400 mx-auto" />
+                  <p className="text-stone-300">No hay horarios disponibles para {formData.guests} personas en este turno.</p>
+                  <button 
+                    onClick={() => setStep('date')}
+                    className="text-gold font-bold uppercase tracking-widest text-xs hover:underline"
+                  >
+                    Cambiar fecha o turno
+                  </button>
+                </div>
+              )}
             </div>
           </motion.div>
         );

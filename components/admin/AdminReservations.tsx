@@ -21,6 +21,18 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingReservation, setEditingReservation] = useState<Partial<Reservation> | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState<Reservation | null>(null);
+  const [selectedTables, setSelectedTables] = useState<Record<string, string[]>>({});
+
+  const handleTableClick = (envId: string, tableId: string) => {
+    setSelectedTables(prev => {
+      const envSelected = prev[envId] || [];
+      if (envSelected.includes(tableId)) {
+        return { ...prev, [envId]: envSelected.filter(id => id !== tableId) };
+      } else {
+        return { ...prev, [envId]: [...envSelected, tableId] };
+      }
+    });
+  };
   const [dateTabsOffset, setDateTabsOffset] = useState(0);
   
   const [mobileView, setMobileView] = useState<'timeline' | 'salon'>('timeline');
@@ -57,7 +69,128 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
     if (newDate < today) return; setSelectedDate(newDate);
   };
   
-  const handlePrint = () => { window.print(); };
+  const handlePrint = () => {
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'absolute';
+    iframe.style.width = '0px';
+    iframe.style.height = '0px';
+    iframe.style.border = 'none';
+    document.body.appendChild(iframe);
+
+    const printWindow = iframe.contentWindow;
+    const printDocument = printWindow?.document;
+
+    if (!printWindow || !printDocument) {
+        alert('No se pudo generar la vista de impresión.');
+        document.body.removeChild(iframe);
+        return;
+    }
+
+    const generateTableRows = (reservationsToPrint: Reservation[]) => {
+        return reservationsToPrint.map(r => {
+            let notesContent = '-';
+            if (r.status !== 'cancelada') {
+                const preferences = [];
+                if (r.specialRequests) preferences.push(r.specialRequests);
+                if (r.dietaryRestrictions && r.dietaryRestrictions.length > 0) preferences.push(`Dietas: ${r.dietaryRestrictions.join(', ')}`);
+                if (r.reducedMobility) preferences.push('Movilidad reducida');
+                if (r.hasChildren) preferences.push('Con niños');
+                if (r.occasion) preferences.push(`Motivo: ${r.occasion}`);
+                if (preferences.length > 0) notesContent = preferences.join(' | ');
+            } else {
+                notesContent = 'CANCELADA';
+            }
+            
+            const rowStyle = r.status === 'cancelada' ? 'style="color: #999; text-decoration: line-through;"' : '';
+
+            return `
+                <tr ${rowStyle}>
+                    <td>${r.time}</td>
+                    <td>${r.name}</td>
+                    <td>${r.guests}</td>
+                    <td>${r.environmentName || 'N/A'}</td>
+                    <td>${notesContent}</td>
+                </tr>
+            `;
+        }).join('');
+    };
+
+    const middayRows = generateTableRows(middayReservations);
+    const nightRows = generateTableRows(nightReservations);
+
+    const content = `
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <title>Listado de Reservas del Día</title>
+                <style>
+                    body { font-family: sans-serif; margin: 20px; color: black; background: white; }
+                    h1, h2, h3 { font-family: serif; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 30px; }
+                    th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
+                    th { background-color: #f2f2f2; font-weight: bold; }
+                    @media print {
+                        body { margin: 0; padding: 20px; }
+                        table { page-break-inside: auto; }
+                        tr { page-break-inside: avoid; page-break-after: auto; }
+                    }
+                </style>
+            </head>
+            <body>
+                <h1>Don García - Reservas del Día</h1>
+                <h2>${selectedDate.toLocaleDateString('es-AR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</h2>
+                
+                <h3>Turno Mediodía</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Hora</th>
+                            <th>Nombre</th>
+                            <th>Cub.</th>
+                            <th>Ambiente</th>
+                            <th>Notas</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${middayRows.length > 0 ? middayRows : '<tr><td colspan="5" style="text-align: center; font-style: italic;">No hay reservas para este turno.</td></tr>'}
+                    </tbody>
+                </table>
+
+                <h3>Turno Noche</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Hora</th>
+                            <th>Nombre</th>
+                            <th>Cub.</th>
+                            <th>Ambiente</th>
+                            <th>Notas</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${nightRows.length > 0 ? nightRows : '<tr><td colspan="5" style="text-align: center; font-style: italic;">No hay reservas para este turno.</td></tr>'}
+                    </tbody>
+                </table>
+
+                <script>
+                    window.onload = function() {
+                        window.print();
+                    }
+                </script>
+            </body>
+        </html>
+    `;
+
+    printDocument.open();
+    printDocument.write(content);
+    printDocument.close();
+
+    setTimeout(() => {
+        if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe);
+        }
+    }, 2000);
+  };
 
   const handlePrintList = (title: string, reservationsToPrint: Reservation[]) => {
     const iframe = document.createElement('iframe');
@@ -160,7 +293,20 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
   };
 
   const openNewReservationModal = () => { setEditingReservation({ date: selectedDate, time: '20:30', status: 'pendiente', guests: 2, environmentId: layout?.environments[0]?.id }); setIsModalOpen(true); };
-  const openNewReservationModalForEnv = (envId: string, envName: string) => { setEditingReservation({ date: selectedDate, time: '20:30', status: 'pendiente', guests: 2, environmentId: envId, environmentName: envName }); setIsModalOpen(true); };
+  const openNewReservationModalForEnv = (envId: string, envName: string, tableIds?: string[], defaultTime: string = '20:30') => { 
+      let guests = 2;
+      let tableName = undefined;
+      if (tableIds && tableIds.length > 0) {
+          const env = layout?.environments.find(e => e.id === envId);
+          if (env) {
+              const tables = tableIds.map(id => env.tables.find(t => t.id === id)).filter(Boolean);
+              guests = tables.reduce((sum, t) => sum + (t?.capacity || 0), 0);
+              tableName = tables.map(t => t?.name).join(', ');
+          }
+      }
+      setEditingReservation({ date: selectedDate, time: defaultTime, status: 'pendiente', guests, environmentId: envId, environmentName: envName, tableIds, tableName }); 
+      setIsModalOpen(true); 
+  };
   const openEditReservationModal = (res: Reservation) => { setEditingReservation(res); setIsModalOpen(true); };
   const executeDelete = async () => { if(confirmingDelete) { try { await deleteReservation(confirmingDelete.id); } catch(e){ console.error(e); } finally { setConfirmingDelete(null); } }};
 
@@ -194,36 +340,47 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
   
   const renderReservationList = (title: string, shiftReservations: Reservation[]) => (
      <div>
-        <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl font-serif text-white border-l-4 border-white/50 pl-4">{title}</h3>
-            <button onClick={() => handlePrintList(title, shiftReservations)} className="no-print text-stone-400 hover:text-gold transition-colors p-2" title={`Imprimir listado de ${title}`}>
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+        <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-serif text-white border-l-2 border-white/50 pl-3">{title}</h3>
+            <button onClick={() => handlePrintList(title, shiftReservations)} className="no-print text-stone-500 hover:text-gold transition-colors p-1.5" title={`Imprimir listado de ${title}`}>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
             </button>
         </div>
-        <div className="w-full overflow-hidden rounded-sm border border-stone-800 bg-stone-900/20">
+        <div className="w-full overflow-hidden rounded-sm border border-stone-800/50 bg-stone-900/20">
           <table className="w-full text-left printable-table">
-            <thead><tr className="bg-stone-900/50"><th className="p-4 text-xs uppercase tracking-widest text-gold">Hora</th><th className="p-4 text-xs uppercase tracking-widest text-gold">Nombre</th><th className="p-4 text-xs uppercase tracking-widest text-gold hidden sm:table-cell">Cub.</th><th className="p-4 text-xs uppercase tracking-widest text-gold hidden md:table-cell">Ambiente</th><th className="p-4 text-xs uppercase tracking-widest text-gold">Notas</th><th className="p-4 text-xs uppercase tracking-widest text-gold no-print">Acciones</th></tr></thead>
-            <tbody className="divide-y divide-stone-800">
+            <thead><tr className="bg-stone-900/50"><th className="p-3 text-[10px] uppercase tracking-widest text-gold">Hora</th><th className="p-3 text-[10px] uppercase tracking-widest text-gold">Nombre</th><th className="p-3 text-[10px] uppercase tracking-widest text-gold hidden sm:table-cell">Cub.</th><th className="p-3 text-[10px] uppercase tracking-widest text-gold hidden md:table-cell">Ambiente</th><th className="p-3 text-[10px] uppercase tracking-widest text-gold">Notas</th><th className="p-3 text-[10px] uppercase tracking-widest text-gold no-print text-right">Acciones</th></tr></thead>
+            <tbody className="divide-y divide-stone-800/50">
               {shiftReservations.map(r => {
                 const isCancelled = r.status === 'cancelada';
                 const hasSpecialNotes = !isCancelled && (r.specialRequests || (r.dietaryRestrictions && r.dietaryRestrictions.length > 0) || r.reducedMobility || r.hasChildren || r.occasion);
                 return (
-                  <tr key={r.id} className={`transition-colors ${isCancelled ? 'bg-stone-900/50 opacity-60' : 'hover:bg-stone-800/50'}`}>
-                    <td className={`p-4 font-bold ${isCancelled ? 'text-stone-600 line-through' : 'text-white'}`}>{r.time}</td>
-                    <td className={`p-4 ${isCancelled ? 'text-stone-600 line-through' : 'text-stone-300'}`}>
+                  <tr key={r.id} className={`transition-colors text-sm ${isCancelled ? 'bg-stone-900/30 opacity-60' : 'hover:bg-stone-800/30'}`}>
+                    <td className={`p-3 font-mono font-bold ${isCancelled ? 'text-stone-600 line-through' : 'text-white'}`}>{r.time}</td>
+                    <td className={`p-3 ${isCancelled ? 'text-stone-600 line-through' : 'text-stone-300'}`}>
                       <div className="flex items-center gap-2">
-                        <span>{r.name}</span>
+                        <span className="font-semibold">{r.name}</span>
                         {hasSpecialNotes && 
-                            <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                            <svg className="w-3.5 h-3.5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
                                 <title>Esta reserva tiene notas especiales</title>
                                 <path fillRule="evenodd" d="M8.257 3.099c.636-1.21 2.852-1.21 3.488 0l6.237 11.94c.64 1.222-.464 2.71-1.744 2.71H3.764c-1.28 0-2.384-1.488-1.744-2.71l6.237-11.94zM9 14a1 1 0 112 0 1 1 0 01-2 0zm1-7a1 1 0 00-1 1v4a1 1 0 102 0V9a1 1 0 00-1-1z" clipRule="evenodd"></path>
                             </svg>
                         }
+                        {!isCancelled && (!r.tableIds || r.tableIds.length === 0) && (
+                            <svg className="w-3.5 h-3.5 text-red-500 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
+                                <title>¡ALERTA! Sin mesa asignada</title>
+                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"></path>
+                            </svg>
+                        )}
                       </div>
                     </td>
-                    <td className={`p-4 hidden sm:table-cell ${isCancelled ? 'text-stone-600 line-through' : 'text-stone-300'}`}>{r.guests}</td>
-                    <td className={`p-4 hidden md:table-cell ${isCancelled ? 'text-stone-600 line-through' : 'text-stone-300'}`}>{r.environmentName || 'N/A'}</td>
-                    <td className={`p-4 text-xs italic ${isCancelled ? 'text-stone-700 line-through' : 'text-stone-400'}`}>
+                    <td className={`p-3 hidden sm:table-cell ${isCancelled ? 'text-stone-600 line-through' : 'text-stone-300'}`}>{r.guests}</td>
+                    <td className={`p-3 hidden md:table-cell ${isCancelled ? 'text-stone-600 line-through' : 'text-stone-400'}`}>
+                      <div className="flex flex-col">
+                        <span>{r.environmentName || 'N/A'}</span>
+                        {r.tableName && <span className="text-[10px] text-gold font-bold">{r.tableName}</span>}
+                      </div>
+                    </td>
+                    <td className={`p-3 text-xs italic ${isCancelled ? 'text-stone-700 line-through' : 'text-stone-500'}`}>
                       {(() => {
                         const notes = [];
                         if (r.specialRequests) notes.push(r.specialRequests);
@@ -234,10 +391,10 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
                         return notes.length > 0 ? notes.join(' | ') : '-';
                       })()}
                     </td>
-                    <td className="p-4 text-right no-print">
-                      <div className="flex items-center justify-end gap-2">
-                          <button onClick={() => openEditReservationModal(r)} className="text-stone-400 hover:text-gold p-2 transition-colors" title="Editar reserva"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
-                          <button onClick={() => setConfirmingDelete(r)} className="text-stone-400 hover:text-red-500 p-2 transition-colors" title="Eliminar reserva"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                    <td className="p-3 text-right no-print">
+                      <div className="flex items-center justify-end gap-1">
+                          <button onClick={() => openEditReservationModal(r)} className="text-stone-500 hover:text-gold p-1.5 transition-colors" title="Editar reserva"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
+                          <button onClick={() => setConfirmingDelete(r)} className="text-stone-500 hover:text-red-500 p-1.5 transition-colors" title="Eliminar reserva"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
                       </div>
                     </td>
                   </tr>
@@ -245,7 +402,7 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
               })}
             </tbody>
           </table>
-           {shiftReservations.length === 0 && <p className="text-center text-stone-600 p-8 italic">No hay reservas para este turno.</p>}
+           {shiftReservations.length === 0 && <p className="text-center text-stone-600 p-6 italic text-sm">No hay reservas para este turno.</p>}
         </div>
       </div>
   );
@@ -253,13 +410,16 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
   const renderReservationsViewDesktop = () => {
     const renderShiftView = (title: string, shiftReservations: Reservation[], shiftCapacity: number) => {
       const totalGuestsInShift = shiftReservations.reduce((s, r) => s + (r.status === 'confirmada' || r.status === 'pendiente' ? r.guests : 0), 0);
+      const isMediodia = title.includes('Mediodía');
+      const shiftKey = isMediodia ? 'mediodia' : 'noche';
+      const defaultTime = isMediodia ? '12:30' : '20:30';
       return (
         <div>
-          <div className="sticky top-[210px] z-20 bg-luxury-black/95 backdrop-blur-md flex justify-between items-baseline mb-8 border-b-2 border-gold/20 pb-4 pt-4 -mx-2 px-2 shadow-lg">
-            <h2 className="text-3xl font-serif text-gold">{title}</h2>
-            <div className="text-right">
+          <div className="sticky top-[180px] z-20 bg-luxury-black/95 backdrop-blur-md flex justify-between items-baseline mb-6 border-b border-stone-800 pb-3 pt-3 -mx-2 px-2 shadow-sm">
+            <h2 className="text-2xl font-serif text-gold">{title}</h2>
+            <div className="text-right flex items-baseline gap-2">
               <p className="text-xl font-bold text-white">{shiftCapacity > 0 ? Math.round((totalGuestsInShift / shiftCapacity) * 100) : 0}%</p>
-              <p className="text-[10px] uppercase tracking-widest text-stone-500 font-bold">Ocupación Turno</p>
+              <p className="text-[8px] uppercase tracking-widest text-stone-500 font-bold">Ocupación Turno</p>
             </div>
           </div>
           {layout?.environments.map(env => { 
@@ -267,53 +427,114 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
             const currentGuests = reservationsInEnv.filter(r => r.status === 'confirmada' || r.status === 'pendiente').reduce((s,r)=>s+r.guests,0);
             const perc = env.maxCapacity>0?(currentGuests/env.maxCapacity)*100:0; 
             const isFull = currentGuests >= env.maxCapacity; 
-            return (<div key={env.id} className="mb-12"><div className="mb-6"><div className={`flex justify-between items-center mb-3 border-l-4 ${isFull ? 'border-red-500/70' : 'border-gold/50'} pl-4`}><h3 className={`text-xl font-serif ${isFull ? 'text-red-400' : 'text-gold'}`}>{env.name}</h3><div className="text-right"><p className={`text-sm font-bold font-mono ${isFull ? 'text-red-400' : 'text-white'}`}>{Math.round(perc)}%</p><p className="text-[8px] uppercase tracking-widest text-stone-500 font-bold">Ocupación</p></div></div><div className="w-full bg-stone-800/50 h-1.5"><div className={`h-1.5 transition-all ${perc >= 100 ?'bg-red-500':'bg-gold'}`} style={{width:`${perc>100?100:perc}%`}}></div></div></div><div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">{reservationsInEnv.map(res=>{ 
-              const isPending = res.status === 'pendiente';
-              const isCancelled = res.status === 'cancelada';
-              const hasSpecialNotes = !isCancelled && (res.specialRequests || (res.dietaryRestrictions && res.dietaryRestrictions.length > 0) || res.reducedMobility || res.hasChildren || res.occasion); 
-              return (
-                <div key={res.id} className={`relative group aspect-square bg-stone-900/70 border-2 rounded-sm transition-colors 
-                  ${isCancelled ? 'border-red-900/50 opacity-60 hover:border-red-700' :
-                  isPending ? 'border-stone-600 hover:border-stone-400' :
-                  'border-gold/30 hover:border-gold'
-                }`}>
-                    {isPending && <span className="absolute top-2 left-2 text-[9px] uppercase tracking-widest font-bold text-stone-500 bg-black/40 px-2 py-0.5 rounded z-10">Pendiente</span>}
-                    {isCancelled && <span className="absolute top-2 left-2 text-[9px] uppercase tracking-widest font-bold text-red-500 bg-black/40 px-2 py-0.5 rounded z-10">Cancelada</span>}
-                    <button onClick={() => openEditReservationModal(res)} className="w-full h-full flex flex-col items-center justify-center p-2 text-center">
-                        <p className={`text-4xl font-serif font-bold transition-transform group-hover:scale-110 
-                          ${isCancelled ? 'text-stone-700 line-through' :
-                            isPending ? 'text-stone-500 group-hover:text-stone-300' :
-                            'text-gold'
-                          }`}>{res.guests}</p>
-                        <p className={`text-[10px] uppercase tracking-widest -mt-1 
-                          ${isCancelled ? 'text-stone-800' :
-                            isPending ? 'text-stone-600' :
-                            'text-stone-400'
-                          }`}>cubiertos</p>
-                        <div className={`font-semibold text-sm text-stone-200 mt-2 w-full break-words px-1 
-                          ${isCancelled ? 'text-stone-600 line-through' :
-                            isPending ? 'text-stone-400' :
-                            'text-stone-200'
-                          }`}>
-                            {res.name}
-                            {hasSpecialNotes && (
-                                <svg className="w-4 h-4 text-yellow-400 inline-block align-middle ml-1" fill="currentColor" viewBox="0 0 20 20">
-                                    <title>Notas especiales</title>
-                                    <path fillRule="evenodd" d="M8.257 3.099c.636-1.21 2.852-1.21 3.488 0l6.237 11.94c.64 1.222-.464 2.71-1.744 2.71H3.764c-1.28 0-2.384-1.488-1.744-2.71l6.237-11.94zM9 14a1 1 0 112 0 1 1 0 01-2 0zm1-7a1 1 0 00-1 1v4a1 1 0 102 0V9a1 1 0 00-1-1z" clipRule="evenodd"></path>
-                                </svg>
-                            )}
-                        </div>
-                    </button>
-                    <button 
-                        onClick={(e) => { e.stopPropagation(); setConfirmingDelete(res); }} 
-                        className="absolute top-1 right-1 p-1 text-stone-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity rounded-full bg-black/30 hover:bg-black/70"
-                        aria-label={`Eliminar reserva de ${res.name}`}
-                        title={`Eliminar reserva de ${res.name}`}
-                    >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                    </button>
+            return (
+              <div key={env.id} className="mb-8">
+                <div className="mb-4">
+                  <div className={`flex justify-between items-center mb-2 border-l-2 ${isFull ? 'border-red-500/70' : 'border-gold/50'} pl-3`}>
+                    <h3 className={`text-lg font-serif ${isFull ? 'text-red-400' : 'text-gold'}`}>{env.name}</h3>
+                    <div className="text-right flex items-baseline gap-2">
+                      <p className={`text-sm font-bold font-mono ${isFull ? 'text-red-400' : 'text-white'}`}>{Math.round(perc)}%</p>
+                      <p className="text-[8px] uppercase tracking-widest text-stone-500 font-bold">Ocupación</p>
+                    </div>
+                  </div>
+                  <div className="w-full bg-stone-800/50 h-1">
+                    <div className={`h-1 transition-all ${perc >= 100 ?'bg-red-500':'bg-gold'}`} style={{width:`${perc>100?100:perc}%`}}></div>
+                  </div>
                 </div>
-              )})}<button onClick={()=>openNewReservationModalForEnv(env.id, env.name)} className="aspect-square border-2 border-dashed border-stone-700 text-stone-600 rounded flex flex-col items-center justify-center p-2 text-center transition-all hover:border-gold hover:text-gold"><span className="text-2xl font-thin">+</span><span className="text-[9px] uppercase tracking-widest">Nueva Reserva</span></button></div></div>); })}
+                <div className="w-full overflow-hidden rounded-sm border border-stone-800/50 bg-stone-900/20">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="bg-stone-900/50">
+                        <th className="p-2 text-[10px] uppercase tracking-widest text-gold w-16">Hora</th>
+                        <th className="p-2 text-[10px] uppercase tracking-widest text-gold">Nombre</th>
+                        <th className="p-2 text-[10px] uppercase tracking-widest text-gold w-12 text-center">Cub.</th>
+                        <th className="p-2 text-[10px] uppercase tracking-widest text-gold w-24 text-center">Estado</th>
+                        <th className="p-2 text-[10px] uppercase tracking-widest text-gold w-20 text-right">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-800/50">
+                      {reservationsInEnv.map(res=>{ 
+                        const isPending = res.status === 'pendiente';
+                        const isCancelled = res.status === 'cancelada';
+                        const hasSpecialNotes = !isCancelled && (res.specialRequests || (res.dietaryRestrictions && res.dietaryRestrictions.length > 0) || res.reducedMobility || res.hasChildren || res.occasion); 
+                        return (
+                          <tr key={res.id} className={`transition-colors text-sm group
+                            ${isCancelled ? 'bg-stone-900/30 opacity-60' :
+                            isPending ? 'bg-stone-800/40 hover:bg-stone-800/60' :
+                            'bg-stone-800/20 hover:bg-stone-800/40'
+                          }`}>
+                              <td className={`p-2 font-mono font-bold ${isCancelled ? 'text-stone-600 line-through' : 'text-white'}`}>{res.time}</td>
+                              <td className={`p-2 ${isCancelled ? 'text-stone-600 line-through' : 'text-stone-300'}`}>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-semibold truncate max-w-[120px] sm:max-w-[200px]">{res.name}</span>
+                                  {hasSpecialNotes && (
+                                      <svg className="w-3.5 h-3.5 text-yellow-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                          <title>Notas especiales</title>
+                                          <path fillRule="evenodd" d="M8.257 3.099c.636-1.21 2.852-1.21 3.488 0l6.237 11.94c.64 1.222-.464 2.71-1.744 2.71H3.764c-1.28 0-2.384-1.488-1.744-2.71l6.237-11.94zM9 14a1 1 0 112 0 1 1 0 01-2 0zm1-7a1 1 0 00-1 1v4a1 1 0 102 0V9a1 1 0 00-1-1z" clipRule="evenodd"></path>
+                                      </svg>
+                                  )}
+                                  {!isCancelled && (!res.tableIds || res.tableIds.length === 0) && (
+                                      <svg className="w-3.5 h-3.5 text-red-500 animate-pulse flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                          <title>¡ALERTA! Sin mesa asignada</title>
+                                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"></path>
+                                      </svg>
+                                  )}
+                                </div>
+                                {res.tableName && <div className="text-[10px] text-gold font-bold mt-0.5">{res.tableName}</div>}
+                              </td>
+                              <td className={`p-2 text-center font-bold ${isCancelled ? 'text-stone-600 line-through' : 'text-gold'}`}>{res.guests}</td>
+                              <td className="p-2 text-center">
+                                  {isPending && <span className="text-[9px] uppercase tracking-widest font-bold text-stone-400 bg-stone-900 px-2 py-1 rounded border border-stone-700">Pendiente</span>}
+                                  {isCancelled && <span className="text-[9px] uppercase tracking-widest font-bold text-red-400 bg-red-950 px-2 py-1 rounded border border-red-900">Cancelada</span>}
+                                  {!isPending && !isCancelled && <span className="text-[9px] uppercase tracking-widest font-bold text-green-400 bg-green-950 px-2 py-1 rounded border border-green-900">Confirmada</span>}
+                              </td>
+                              <td className="p-2 text-right">
+                                <div className="flex items-center justify-end gap-1">
+                                    <button onClick={() => openEditReservationModal(res)} className="text-stone-500 hover:text-gold p-1.5 transition-colors" title="Editar reserva"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
+                                    <button onClick={() => setConfirmingDelete(res)} className="text-stone-500 hover:text-red-500 p-1.5 transition-colors" title="Eliminar reserva"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                                </div>
+                              </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                  <button onClick={()=>openNewReservationModalForEnv(env.id, env.name, undefined, defaultTime)} className="w-full py-3 border-t border-dashed border-stone-700/50 text-stone-500 hover:text-gold hover:bg-gold/5 transition-colors flex items-center justify-center gap-2 text-[10px] uppercase tracking-widest font-bold">
+                    <Plus size={14} /> Nueva Reserva en {env.name}
+                  </button>
+                  <div className="p-4 border-t border-stone-800 bg-stone-900/30">
+                    <h4 className="text-[10px] uppercase tracking-widest text-stone-500 mb-3 font-bold">Mesas Disponibles</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {env.tables
+                        .filter(table => !reservationsInEnv.some(res => res.status !== 'cancelada' && (res.tableIds?.includes(table.id) || res.tableId === table.id)))
+                        .map(table => {
+                        const isSelected = selectedTables[`${env.id}-${shiftKey}`]?.includes(table.id);
+                        return (
+                          <button
+                            key={table.id}
+                            onClick={() => handleTableClick(`${env.id}-${shiftKey}`, table.id)}
+                            className={`relative px-3 py-2 text-xs border rounded transition-colors ${isSelected ? 'bg-gold text-black border-gold font-bold' : 'border-stone-700 text-stone-300 hover:border-gold'}`}
+                          >
+                            {table.name} <span className="opacity-50 ml-1">({table.capacity})</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                    {selectedTables[`${env.id}-${shiftKey}`]?.length > 0 && (
+                      <button 
+                         onClick={() => {
+                             openNewReservationModalForEnv(env.id, env.name, selectedTables[`${env.id}-${shiftKey}`], defaultTime);
+                             setSelectedTables(prev => ({ ...prev, [`${env.id}-${shiftKey}`]: [] }));
+                         }}
+                         className="mt-4 w-full py-3 bg-gold text-black text-[10px] uppercase tracking-widest font-bold rounded hover:bg-yellow-500 transition-colors">
+                        Reservar Mesas Seleccionadas
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ); 
+          })}
         </div>
       );
     };
@@ -554,8 +775,8 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
                 <div className={`h-1.5 rounded-full transition-all duration-1000 ease-out ${totalPercentage > 90 ? 'bg-red-500' : 'bg-gold'}`} style={{ width: `${totalPercentage > 100 ? 100 : totalPercentage}%` }}></div>
             </div>
             <div className="hidden sm:flex items-center gap-4">
-                <button onClick={handlePrint} className="p-2 text-stone-500 hover:text-gold transition-colors" title="Imprimir vista del día">
-                    <Printer size={20} />
+                <button onClick={handlePrint} className="no-print text-stone-500 hover:text-gold transition-colors p-1.5" title="Imprimir listado del día">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                 </button>
             </div>
         </div>

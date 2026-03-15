@@ -232,8 +232,10 @@ const AdminReservationsList: React.FC = () => {
                   <td className="p-6">
                     <div className="text-sm text-stone-200 font-medium">{res.name}</div>
                     <div className="text-[10px] text-stone-500 mt-0.5">{res.phone || res.email || 'Sin contacto'}</div>
-                    {(res.occasion || res.hasChildren) && (
+                    {(res.occasion || res.hasChildren || res.tableName) && (
                       <div className="text-[10px] text-gold mt-1">
+                        {res.tableName && <span>Mesa: {res.tableName}</span>}
+                        {res.tableName && (res.occasion || res.hasChildren) && <span className="mx-1">•</span>}
                         {res.occasion && <span>{res.occasion}</span>}
                         {res.occasion && res.hasChildren && <span className="mx-1">•</span>}
                         {res.hasChildren && <span>Con niños</span>}

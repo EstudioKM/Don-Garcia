@@ -1,18 +1,19 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Reservation, Layout, RestaurantSettings, Customer } from '../../types';
-import { createReservation, updateReservation } from '../../services/reservationRepository';
+import { createReservation, updateReservation, listenToReservationsForDate } from '../../services/reservationRepository';
 import { findOrCreateCustomer, listenToCustomers } from '../../services/customerRepository';
 import { getRestaurantSettings } from '../../services/settingsRepository';
 import { sendReservationWebhook } from '../../services/webhookService';
 import { Timestamp } from 'firebase/firestore';
+import { checkAvailability } from '../../utils/reservationLogic';
 
 interface ReservationModalProps {
   isOpen: boolean;
   onClose: () => void;
   reservationData: Partial<Reservation> | null;
   layout: Layout | null;
-  reservations: Reservation[]; // Added to check capacity
+  reservations?: Reservation[]; // Made optional as we use modalReservations
 }
 
 interface ReservationFormData extends Partial<Reservation> {
@@ -31,11 +32,42 @@ const ReservationModal: React.FC<ReservationModalProps> = ({ isOpen, onClose, re
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [settings, setSettings] = useState<RestaurantSettings | null>(null);
   const [capacityError, setCapacityError] = useState<string | null>(null);
+  const [availableCombinations, setAvailableCombinations] = useState<string[][]>([]);
+  const [manualTableSelection, setManualTableSelection] = useState<boolean>(false);
+  const [modalReservations, setModalReservations] = useState<Reservation[]>([]);
 
   // --- Autocomplete State ---
   const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
   const [searchResults, setSearchResults] = useState<Customer[]>([]);
   const [activeSearchField, setActiveSearchField] = useState<'name' | 'phone' | null>(null);
+
+  useEffect(() => {
+    if (!formData.dateString) return;
+    const date = new Date(formData.dateString + 'T00:00:00-03:00');
+    const unsubscribe = listenToReservationsForDate(date, setModalReservations);
+    return () => unsubscribe();
+  }, [formData.dateString]);
+
+  const updateAvailability = () => {
+    if (!formData.dateString || !formData.time || !formData.guests || !formData.environmentId || !layout) return;
+    const selectedEnv = layout.environments.find(e => e.id === formData.environmentId);
+    if (!selectedEnv) return;
+
+    const availability = checkAvailability(
+      selectedEnv,
+      modalReservations.filter(r => {
+        return r.id !== formData.id && r.status !== 'cancelada'
+      }),
+      formData.time,
+      Number(formData.guests),
+      120
+    );
+    setAvailableCombinations(availability.combinations || []);
+  };
+
+  useEffect(() => {
+    updateAvailability();
+  }, [formData.dateString, formData.time, formData.guests, formData.environmentId, modalReservations]);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -166,6 +198,26 @@ const ReservationModal: React.FC<ReservationModalProps> = ({ isOpen, onClose, re
     </div>
   );
 
+  const handleTableToggle = (tableId: string) => {
+    const currentTableIds = formData.tableIds || [];
+    let newTableIds: string[];
+    
+    if (currentTableIds.includes(tableId)) {
+      newTableIds = currentTableIds.filter(id => id !== tableId);
+    } else {
+      newTableIds = [...currentTableIds, tableId];
+    }
+    
+    const selectedEnv = layout?.environments.find(e => e.id === formData.environmentId);
+    const tableName = newTableIds
+      .map(id => selectedEnv?.tables.find(t => t.id === id)?.name)
+      .filter(Boolean)
+      .join(' + ');
+      
+    setFormData({ ...formData, tableIds: newTableIds, tableName });
+    setManualTableSelection(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setCapacityError(null);
@@ -188,36 +240,96 @@ const ReservationModal: React.FC<ReservationModalProps> = ({ isOpen, onClose, re
         setIsSubmitting(false);
         return;
     }
-
-    const totalLayoutCapacity = layout?.environments.reduce((sum, env) => sum + env.maxCapacity, 0) || 0;
-
-    const reservationsForShift = reservations.filter(r => {
-        const hour = parseInt(r.time.split(':')[0]);
-        return shiftKey === 'mediodia' ? hour < 16 : hour >= 16;
-    });
-
-    const totalGuestsForShift = reservationsForShift
-        .filter(r => r.id !== formData.id && r.status !== 'cancelada')
-        .reduce((sum, r) => sum + Number(r.guests), 0);
-
-    if (totalGuestsForShift + Number(formData.guests) > totalLayoutCapacity) {
-        setCapacityError(`El turno de la ${shiftKey} está completo. Capacidad: ${totalLayoutCapacity}, Reservados: ${totalGuestsForShift}.`);
+    
+    const selectedEnv = layout?.environments.find(env => env.id === formData.environmentId);
+    if (!selectedEnv) {
+        setCapacityError("Ambiente no encontrado.");
         setIsSubmitting(false);
         return;
     }
-    
-    const selectedEnv = layout?.environments.find(env => env.id === formData.environmentId);
-    
-    if (selectedEnv) {
-        const guestsInSelectedEnvForShift = reservationsForShift
-            .filter(r => r.id !== formData.id && r.environmentId === formData.environmentId && r.status !== 'cancelada')
-            .reduce((sum, r) => sum + Number(r.guests), 0);
 
-        if (guestsInSelectedEnvForShift + Number(formData.guests) > selectedEnv.maxCapacity) {
-            setCapacityError(`El ambiente "${selectedEnv.name}" tiene una capacidad máxima de ${selectedEnv.maxCapacity} cubiertos para este turno. Ocupación actual: ${guestsInSelectedEnvForShift}.`);
+    // --- Verificación de Capacidad y Mesas ---
+    let finalTableIds = formData.tableIds || [];
+    let finalTableName = formData.tableName || null;
+    let finalTableId = formData.tableId || null;
+
+    if (finalTableIds.length > 0) {
+        // Verify if the manually selected tables are available
+        const relevantReservations = modalReservations.filter(r => {
+            return r.id !== formData.id && 
+            r.status !== 'cancelada' && 
+            r.environmentId === selectedEnv.id
+        });
+        
+        const reqStart = parseInt(formData.time.split(':')[0]) * 60 + parseInt(formData.time.split(':')[1]);
+        const reqEnd = reqStart + 120; // 120 mins duration default
+
+        const isOccupied = finalTableIds.some(tId => {
+            return relevantReservations.some(res => {
+                const resTableIds = res.tableIds || (res.tableId ? [res.tableId] : []);
+                if (resTableIds.includes(tId)) {
+                    const resStart = parseInt(res.time.split(':')[0]) * 60 + parseInt(res.time.split(':')[1]);
+                    const resEnd = resStart + (res.duration || 120);
+                    return (reqStart < resEnd && reqEnd > resStart); // Overlap
+                }
+                return false;
+            });
+        });
+
+        if (isOccupied) {
+            setCapacityError(`Las mesas seleccionadas no están disponibles a las ${formData.time}.`);
             setIsSubmitting(false);
             return;
         }
+
+        const selectedTablesCapacity = finalTableIds.reduce((sum, tId) => {
+            const table = selectedEnv.tables.find(t => t.id === tId);
+            return sum + (table?.capacity || 0);
+        }, 0);
+
+        if (Number(formData.guests) > selectedTablesCapacity) {
+            setCapacityError(`Las mesas seleccionadas tienen una capacidad máxima de ${selectedTablesCapacity} personas.`);
+            setIsSubmitting(false);
+            return;
+        }
+
+        // Check environment capacity
+        const currentGuestsInEnv = relevantReservations.reduce((sum, res) => {
+            const resStart = parseInt(res.time.split(':')[0]) * 60 + parseInt(res.time.split(':')[1]);
+            const resEnd = resStart + (res.duration || 120);
+            if (reqStart < resEnd && reqEnd > resStart) {
+                return sum + res.guests;
+            }
+            return sum;
+        }, 0);
+
+        if (currentGuestsInEnv + Number(formData.guests) > selectedEnv.maxCapacity) {
+            setCapacityError(`La capacidad máxima del ambiente "${selectedEnv.name}" ha sido alcanzada para ese horario.`);
+            setIsSubmitting(false);
+            return;
+        }
+
+        finalTableId = finalTableIds[0];
+    } else {
+        // Use checkAvailability to find tables automatically
+        const availability = checkAvailability(
+            selectedEnv,
+            modalReservations.filter(r => {
+                return r.id !== formData.id && r.status !== 'cancelada'
+            }),
+            formData.time,
+            Number(formData.guests),
+            120 // Default duration or get from settings
+        );
+
+        if (!availability.available) {
+            setCapacityError(`No hay mesas disponibles en "${selectedEnv.name}" para ${formData.guests} personas a las ${formData.time}.`);
+            setIsSubmitting(false);
+            return;
+        }
+        finalTableIds = availability.tableIds || [];
+        finalTableId = finalTableIds.length > 0 ? finalTableIds[0] : null;
+        finalTableName = finalTableIds.length > 0 ? finalTableIds.map(id => selectedEnv.tables.find(t => t.id === id)?.name).filter(Boolean).join(', ') : null;
     }
     
     // --- Lógica de Creación de Cliente y Reserva ---
@@ -240,8 +352,9 @@ const ReservationModal: React.FC<ReservationModalProps> = ({ isOpen, onClose, re
           time: formData.time || '00:00',
           guests: Number(formData.guests) || 1,
           status: formData.status || 'pendiente',
-          tableId: null,
-          tableName: null,
+          tableId: finalTableId,
+          tableIds: finalTableIds,
+          tableName: finalTableName,
           specialRequests: formData.specialRequests || '',
           environmentId: formData.environmentId || null,
           environmentName: selectedEnv?.name || null,
@@ -250,6 +363,7 @@ const ReservationModal: React.FC<ReservationModalProps> = ({ isOpen, onClose, re
           hasChildren: formData.hasChildren || false,
           occasion: formData.occasion || 'Cena casual',
           customerId: customerId,
+          duration: 120, // Default duration
       };
       
       let reservationId = formData.id;
@@ -354,13 +468,112 @@ const ReservationModal: React.FC<ReservationModalProps> = ({ isOpen, onClose, re
                     <div><label className={labelClasses}>Turno</label><select required value={formData.shift || ''} onChange={e => setFormData({...formData, shift: e.target.value})} disabled={!formData.dateString || availableShifts.length === 0} className={`${inputClasses} appearance-none`}><option value="">{availableShifts.length > 0 ? 'Seleccione' : 'Cerrado'}</option>{availableShifts.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}</select></div>
                     <div><label className={labelClasses}>Hora</label><select required value={formData.time || ''} onChange={e => setFormData({...formData, time: e.target.value})} disabled={!formData.shift} className={`${inputClasses} appearance-none`}><option value="">Seleccione</option>{availableTimes.map(t => <option key={t} value={t}>{t} hs</option>)}</select></div>
                 </div>
-                 <div className="grid grid-cols-2 gap-x-4">
+                <div className="grid grid-cols-2 gap-x-4">
                     <div><label className={labelClasses}>Personas</label><input required type="number" min="1" value={formData.guests || ''} onChange={e => setFormData({...formData, guests: parseInt(e.target.value)})} className={inputClasses}/></div>
                     <div><label className={labelClasses}>Ambiente</label><select required value={formData.environmentId || ''} onChange={e => setFormData({...formData, environmentId: e.target.value})} className={`${inputClasses} appearance-none`}><option value="">Seleccionar</option>{layout?.environments.map(env => (<option key={env.id} value={env.id}>{env.name}</option>))}</select></div>
                 </div>
+
+                {formData.environmentId && layout && (
+                    <div className="mt-4">
+                        <div className="flex justify-between items-center mb-1">
+                            <label className={labelClasses}>Asignación de Mesas</label>
+                            <button 
+                                type="button" 
+                                onClick={() => setManualTableSelection(!manualTableSelection)}
+                                className="text-[10px] text-gold hover:underline uppercase tracking-widest font-bold"
+                            >
+                                {manualTableSelection ? 'Ver Sugerencias' : 'Selección Manual'}
+                            </button>
+                        </div>
+                        
+                        {!manualTableSelection && availableCombinations.length > 0 ? (
+                            <div className="grid grid-cols-1 gap-2 mt-1">
+                                {availableCombinations.map((combo, index) => {
+                                    const env = layout.environments.find(e => e.id === formData.environmentId);
+                                    const tables = combo.map(id => env?.tables.find(t => t.id === id)).filter(Boolean);
+                                    const tableName = tables.map(t => t?.name).join(' + ');
+                                    const isSelected = formData.tableIds?.join(',') === combo.join(',');
+                                    return (
+                                        <button 
+                                            key={index} 
+                                            type="button" 
+                                            onClick={() => {
+                                                setFormData({...formData, tableIds: combo, tableName: tableName});
+                                                setManualTableSelection(false);
+                                            }}
+                                            className={`w-full text-left p-3 text-xs border rounded transition-all ${isSelected ? 'bg-[#b08d48] text-black border-[#b08d48] font-bold' : 'bg-stone-950/40 border-stone-800 text-stone-400 hover:border-gold/50'}`}
+                                        >
+                                            <div className="flex justify-between items-center">
+                                                <span className={isSelected ? 'text-black' : 'text-stone-200'}>{tableName}</span>
+                                                <span className={`text-[10px] uppercase tracking-widest ${isSelected ? 'text-black/70' : 'text-stone-500'}`}>Cap: {tables.reduce((s, t) => s + (t?.capacity || 0), 0)}</span>
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mt-1 p-3 bg-black/20 border border-stone-800 rounded">
+                                {layout.environments.find(e => e.id === formData.environmentId)?.tables.map(table => {
+                                    const isSelected = formData.tableIds?.includes(table.id);
+                                    const isOccupiedByOthers = modalReservations.some(r => {
+                                        if (r.id === formData.id || r.status === 'cancelada' || r.environmentId !== formData.environmentId) return false;
+                                        
+                                        const reqStart = parseInt(formData.time?.split(':')[0] || '0') * 60 + parseInt(formData.time?.split(':')[1] || '0');
+                                        const reqEnd = reqStart + 120;
+                                        const resStart = parseInt(r.time.split(':')[0]) * 60 + parseInt(r.time.split(':')[1]);
+                                        const resEnd = resStart + (r.duration || 120);
+                                        
+                                        if (!(reqStart < resEnd && reqEnd > resStart)) return false;
+                                        
+                                        return r.tableIds?.includes(table.id) || r.tableId === table.id;
+                                    });
+
+                                    return (
+                                        <button
+                                            key={table.id}
+                                            type="button"
+                                            disabled={isOccupiedByOthers}
+                                            onClick={() => handleTableToggle(table.id)}
+                                            className={`p-2 text-[10px] border rounded transition-all flex flex-col items-center justify-center gap-1 ${
+                                                isSelected 
+                                                    ? 'bg-gold text-black border-gold font-bold' 
+                                                    : isOccupiedByOthers 
+                                                        ? 'bg-red-900/20 border-red-900/40 text-red-500/50 cursor-not-allowed opacity-50'
+                                                        : 'border-stone-700 text-stone-400 hover:border-gold hover:text-white'
+                                            }`}
+                                        >
+                                            <span className="font-bold">{table.name}</span>
+                                            <span className="opacity-60">({table.capacity})</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+                        
+                        {!manualTableSelection && availableCombinations.length === 0 && (
+                            <p className="text-[10px] text-red-400 mt-2 italic">No se encontraron combinaciones sugeridas para {formData.guests} personas.</p>
+                        )}
+                    </div>
+                )}
             </div>
+
             {/* Side Info Column */}
             <div className="lg:col-span-2 flex flex-col gap-y-4 h-full">
+                {formData.tableName && (
+                    <div className="bg-stone-950/50 border border-stone-800 rounded p-3 flex items-center justify-between shadow-inner">
+                        <div>
+                            <span className="text-[10px] uppercase tracking-widest text-stone-500 font-bold block mb-1">Mesas Asignadas</span>
+                            <span className="text-lg font-serif text-gold">{formData.tableName}</span>
+                        </div>
+                        <button 
+                            type="button" 
+                            onClick={() => setFormData({ ...formData, tableId: undefined, tableIds: [], tableName: undefined })}
+                            className="text-[10px] text-stone-500 hover:text-red-400 transition-colors uppercase tracking-widest font-bold"
+                        >
+                            QUITAR
+                        </button>
+                    </div>
+                )}
                 <div>
                     <label className={labelClasses}>Estado de la Reserva</label>
                     <div className="grid grid-cols-3 gap-2 mt-1">
