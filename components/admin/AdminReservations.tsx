@@ -323,6 +323,9 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
     return dayKeys[selectedDate.getDay()];
   }, [selectedDate]);
 
+  const isMediodiaActive = useMemo(() => settings?.days[dayKey]?.shifts.mediodia.isActive, [settings, dayKey]);
+  const isNocheActive = useMemo(() => settings?.days[dayKey]?.shifts.noche.isActive, [settings, dayKey]);
+
   const totalLayoutCapacity = useMemo(() => {
       return layout?.environments.reduce((sum, env) => sum + env.maxCapacity, 0) || 0;
   }, [layout]);
@@ -597,18 +600,26 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
       );
     };
 
+    const activeShifts = [];
+    if (isMediodiaActive) activeShifts.push('mediodia');
+    if (isNocheActive) activeShifts.push('noche');
+
     return (<div className="hidden md:block">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 mb-24 no-print">
-            <div className="space-y-8">
-                {renderShiftView('Turno Mediodía', middayReservations, middayCapacity, middayTableCapacity)}
-            </div>
-            <div className="space-y-8">
-                {renderShiftView('Turno Noche', nightReservations, nightCapacity, nightTableCapacity)}
-            </div>
+        <div className={`grid grid-cols-1 ${activeShifts.length > 1 ? 'lg:grid-cols-2' : ''} gap-16 mb-24 no-print`}>
+            {isMediodiaActive && (
+                <div className="space-y-8">
+                    {renderShiftView('Turno Mediodía', middayReservations, middayCapacity, middayTableCapacity)}
+                </div>
+            )}
+            {isNocheActive && (
+                <div className="space-y-8">
+                    {renderShiftView('Turno Noche', nightReservations, nightCapacity, nightTableCapacity)}
+                </div>
+            )}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-16 gap-y-16 border-t border-stone-800/50 pt-16">
-            {renderReservationList('Listado Mediodía', middayReservations)}
-            {renderReservationList('Listado Noche', nightReservations)}
+        <div className={`grid grid-cols-1 ${activeShifts.length > 1 ? 'lg:grid-cols-2' : ''} gap-x-16 gap-y-16 border-t border-stone-800/50 pt-16`}>
+            {isMediodiaActive && renderReservationList('Listado Mediodía', middayReservations)}
+            {isNocheActive && renderReservationList('Listado Noche', nightReservations)}
         </div>
     </div>);
   };
@@ -736,10 +747,10 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
 
     return (
         <div className="pb-24 pt-4">
-            {middayReservations.length > 0 && renderShiftEnvironments('Turno Mediodía', middayReservations)}
-            {nightReservations.length > 0 && renderShiftEnvironments('Turno Noche', nightReservations)}
-            {sortedReservations.length === 0 && (
-                 <p className="text-center text-stone-600 italic pt-12">No hay reservas para mostrar la ocupación.</p>
+            {isMediodiaActive && renderShiftEnvironments('Turno Mediodía', middayReservations)}
+            {isNocheActive && renderShiftEnvironments('Turno Noche', nightReservations)}
+            {(!isMediodiaActive && !isNocheActive) && (
+                 <p className="text-center text-stone-600 italic pt-12">El restaurante no abre hoy.</p>
             )}
         </div>
     );
@@ -922,39 +933,43 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
         </div>
 
         {/* Shift Specific Sticky Headers */}
-        <div className="hidden md:grid grid-cols-2 gap-8 mt-3 pt-3 border-t border-stone-800/30">
-            <div className="flex items-center justify-between bg-stone-900/40 p-2 rounded-lg border border-stone-800/50">
-                <div className="flex items-center gap-2">
-                    <div className="w-0.5 h-6 bg-gold rounded-full"></div>
-                    <span className="text-[10px] font-serif text-gold uppercase tracking-widest">Turno Mediodía</span>
-                </div>
-                <div className="flex gap-4">
-                    <div className="text-right">
-                        <p className="text-[7px] uppercase tracking-widest text-stone-500 font-bold">Mesas</p>
-                        <p className="text-[10px] font-mono font-bold text-white leading-none">{Math.round(middayTablePerc)}%</p>
+        <div className={`hidden md:grid gap-8 mt-3 pt-3 border-t border-stone-800/30 ${isMediodiaActive && isNocheActive ? 'grid-cols-2' : 'grid-cols-1'}`}>
+            {isMediodiaActive && (
+                <div className="flex items-center justify-between bg-stone-900/40 p-2 rounded-lg border border-stone-800/50">
+                    <div className="flex items-center gap-2">
+                        <div className="w-0.5 h-6 bg-gold rounded-full"></div>
+                        <span className="text-xs font-serif text-gold uppercase tracking-widest">Turno Mediodía</span>
                     </div>
-                    <div className="text-right">
-                        <p className="text-[7px] uppercase tracking-widest text-stone-500 font-bold">Personas</p>
-                        <p className="text-[10px] font-mono font-bold text-stone-400 leading-none">{Math.round(middayGuestPerc)}%</p>
-                    </div>
-                </div>
-            </div>
-            <div className="flex items-center justify-between bg-stone-900/40 p-2 rounded-lg border border-stone-800/50">
-                <div className="flex items-center gap-2">
-                    <div className="w-0.5 h-6 bg-gold rounded-full"></div>
-                    <span className="text-[10px] font-serif text-gold uppercase tracking-widest">Turno Noche</span>
-                </div>
-                <div className="flex gap-4">
-                    <div className="text-right">
-                        <p className="text-[7px] uppercase tracking-widest text-stone-500 font-bold">Mesas</p>
-                        <p className="text-[10px] font-mono font-bold text-white leading-none">{Math.round(nightTablePerc)}%</p>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-[7px] uppercase tracking-widest text-stone-500 font-bold">Personas</p>
-                        <p className="text-[10px] font-mono font-bold text-stone-400 leading-none">{Math.round(nightGuestPerc)}%</p>
+                    <div className="flex gap-4">
+                        <div className="text-right">
+                            <p className="text-[8px] uppercase tracking-widest text-stone-500 font-bold">Mesas</p>
+                            <p className="text-xs font-mono font-bold text-white leading-none">{Math.round(middayTablePerc)}%</p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-[8px] uppercase tracking-widest text-stone-500 font-bold">Personas</p>
+                            <p className="text-xs font-mono font-bold text-stone-400 leading-none">{Math.round(middayGuestPerc)}%</p>
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
+            {isNocheActive && (
+                <div className="flex items-center justify-between bg-stone-900/40 p-2 rounded-lg border border-stone-800/50">
+                    <div className="flex items-center gap-2">
+                        <div className="w-0.5 h-6 bg-gold rounded-full"></div>
+                        <span className="text-xs font-serif text-gold uppercase tracking-widest">Turno Noche</span>
+                    </div>
+                    <div className="flex gap-4">
+                        <div className="text-right">
+                            <p className="text-[8px] uppercase tracking-widest text-stone-500 font-bold">Mesas</p>
+                            <p className="text-xs font-mono font-bold text-white leading-none">{Math.round(nightTablePerc)}%</p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-[8px] uppercase tracking-widest text-stone-500 font-bold">Personas</p>
+                            <p className="text-xs font-mono font-bold text-stone-400 leading-none">{Math.round(nightGuestPerc)}%</p>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
       </div>
 
