@@ -1,7 +1,10 @@
 
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
+import { getAnalytics } from "firebase/analytics";
 
+// Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyCrc_HvoJJiD1iRJyjXW6_nMbTpK2n1E9c",
   authDomain: "dongarcia-4a95d.firebaseapp.com",
@@ -15,5 +18,7 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
+const analytics = getAnalytics(app);
 
-export { app, db };
+export { app, db, auth, analytics };

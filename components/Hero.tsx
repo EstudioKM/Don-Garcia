@@ -1,6 +1,13 @@
 import React from 'react';
+import { WebImages } from '../types';
 
-const Hero: React.FC = () => {
+import { motion } from 'motion/react';
+
+interface HeroProps {
+  webImages?: WebImages;
+}
+
+const Hero: React.FC<HeroProps> = ({ webImages }) => {
   const handleLinkClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
     // Es un ancla de scroll (ej. #about).
     event.preventDefault();
@@ -23,16 +30,25 @@ const Hero: React.FC = () => {
     <section id="home" className="relative h-[100dvh] w-full flex flex-col items-center justify-center text-white overflow-hidden">
       {/* Background Image & Overlay */}
       <div className="absolute inset-0 z-0">
-        <img 
-          src="https://images.unsplash.com/photo-1554998171-89445e31c52b?auto=format&fit=crop&q=80&w=1974" 
+        <motion.img 
+          initial={{ scale: 1.1, opacity: 0 }}
+          animate={{ scale: 1, opacity: 0.8 }}
+          transition={{ duration: 1.5, ease: "easeOut" }}
+          src={webImages?.hero || "https://images.unsplash.com/photo-1554998171-89445e31c52b?auto=format&fit=crop&q=80&w=1974"} 
           alt="Primer plano de carnes cocinándose sobre fuegos de parrilla"
           className="w-full h-full object-cover" 
+          referrerPolicy="no-referrer"
         />
         <div className="absolute inset-0 bg-black/70"></div>
       </div>
 
       {/* Content */}
-      <div className="relative z-10 text-center px-6 animate-fadeInUp">
+      <motion.div 
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 1, delay: 0.5, ease: "easeOut" }}
+        className="relative z-10 text-center px-6"
+      >
         <h1 className="text-5xl sm:text-6xl md:text-8xl font-serif mb-4 text-gold tracking-tighter">
           Don García
         </h1>
@@ -50,16 +66,21 @@ const Hero: React.FC = () => {
             Ver la Carta
           </a>
         </div>
-      </div>
+      </motion.div>
       
       {/* Scroll Down Indicator */}
-      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10">
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 2, duration: 1 }}
+        className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10"
+      >
         <a href="#about" onClick={handleLinkClick} className="animate-bounce block">
           <svg className="w-6 h-6 text-white/50 hover:text-gold transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
           </svg>
         </a>
-      </div>
+      </motion.div>
     </section>
   );
 };

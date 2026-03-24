@@ -1,16 +1,22 @@
 
-import React, { useState } from 'react';
+import React from 'react';
+import { WebImages } from '../types';
 import ReservationForm from './ReservationForm';
 
-const Reservation: React.FC = () => {
+interface ReservationProps {
+  webImages?: WebImages;
+}
+
+const Reservation: React.FC<ReservationProps> = ({ webImages }) => {
   return (
     <section id="reservation" className="py-32 bg-luxury-black text-white relative overflow-hidden">
       {/* Background Decor */}
       <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
         <img 
-          src="https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&q=80&w=2000" 
+          src={webImages?.reservation || "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&q=80&w=2000"} 
           alt="Background" 
           className="w-full h-full object-cover"
+          referrerPolicy="no-referrer"
         />
       </div>
 

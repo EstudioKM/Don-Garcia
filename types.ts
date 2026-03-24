@@ -127,6 +127,15 @@ export interface SpecialDay {
   note?: string;
 }
 
+export interface WebImages {
+  hero?: string;
+  about?: string;
+  menu?: string;
+  reservation?: string;
+  logo?: string;
+  favicon?: string;
+}
+
 export interface RestaurantSettings {
   sommelier: SommelierSettings;
   days: {
@@ -139,4 +148,5 @@ export interface RestaurantSettings {
     domingo: DaySetting;
   };
   specialDays?: SpecialDay[];
+  webImages?: WebImages;
 }

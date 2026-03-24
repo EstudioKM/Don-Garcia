@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { auth } from '../firebase';
+import { signOut } from 'firebase/auth';
 import AdminOrders from './admin/AdminOrders';
 import AdminMenuEditor from './admin/AdminMenuEditor';
 import AdminSommelier from './admin/AdminSommelier';
@@ -7,16 +9,26 @@ import AdminReservationsList from './admin/AdminReservationsList';
 import AdminSettings from './admin/AdminSettings';
 import AdminCustomers from './admin/AdminCustomers';
 import AdminAnalytics from './admin/AdminAnalytics';
+import AdminUsers from './admin/AdminUsers';
 
 interface AdminMenuProps {
   onClose: () => void;
 }
 
-type AdminTab = 'reservations' | 'reservationsList' | 'customers' | 'analytics' | 'orders' | 'menu' | 'settings' | 'sommelier';
+type AdminTab = 'reservations' | 'reservationsList' | 'customers' | 'analytics' | 'orders' | 'menu' | 'settings' | 'sommelier' | 'users';
 
 const AdminMenu: React.FC<AdminMenuProps> = ({ onClose }) => {
   const [activeTab, setActiveTab] = useState<AdminTab>('reservations');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      onClose();
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+  };
 
   const icons: Record<AdminTab, React.ReactNode> = {
     reservations: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>,
@@ -27,6 +39,7 @@ const AdminMenu: React.FC<AdminMenuProps> = ({ onClose }) => {
     menu: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>,
     settings: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>,
     sommelier: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>,
+    users: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>,
   };
 
   const tabLabels: Record<AdminTab, string> = {
@@ -38,6 +51,7 @@ const AdminMenu: React.FC<AdminMenuProps> = ({ onClose }) => {
     menu: 'Carta',
     settings: 'Ajustes',
     sommelier: 'Sommelier',
+    users: 'Usuarios',
   };
 
   const handleTabClick = (tab: AdminTab) => {
@@ -84,8 +98,13 @@ const AdminMenu: React.FC<AdminMenuProps> = ({ onClose }) => {
             <TabButton tab="menu" label={tabLabels.menu} />
             <TabButton tab="settings" label={tabLabels.settings} />
             <TabButton tab="sommelier" label={tabLabels.sommelier} />
+            <TabButton tab="users" label={tabLabels.users} />
         </nav>
-        <div className="p-4 border-t border-stone-800">
+        <div className="p-4 border-t border-stone-800 space-y-2">
+          <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-sm text-sm text-red-500 hover:bg-red-900/10 transition-colors">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+            <span>Cerrar Sesión</span>
+          </button>
           <button onClick={onClose} className="w-full flex items-center gap-3 px-4 py-3 rounded-sm text-sm text-stone-500 hover:bg-stone-800/50 hover:text-white transition-colors">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 16l-4-4m0 0l4-4m-4 4h12"></path></svg>
             <span>Cerrar Panel</span>
@@ -114,6 +133,7 @@ const AdminMenu: React.FC<AdminMenuProps> = ({ onClose }) => {
                 {activeTab === 'menu' && <AdminMenuEditor />}
                 {activeTab === 'settings' && <AdminSettings />}
                 {activeTab === 'sommelier' && <AdminSommelier />}
+                {activeTab === 'users' && <AdminUsers />}
             </div>
         </main>
       </div>

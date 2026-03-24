@@ -8,8 +8,14 @@ import { SommelierPage } from './components/SommelierPage';
 import LocationSection from './components/LocationSection';
 import EventsSection from './components/EventsSection';
 import AdminMenu from './components/AdminMenu';
+import Login from './components/Login';
 import { seedReservations, seedLayout, seedSettings, seedCustomers } from './services/seedService';
+import { getRestaurantSettings } from './services/settingsRepository';
+import { RestaurantSettings } from './types';
 import ReservationPage from './components/ReservationPage';
+import { auth } from './firebase';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import { bootstrapAdmin } from './services/userService';
 
 const getRouteFromHash = () => {
   const hash = window.location.hash.substring(1); // -> "/reservar" o ""
@@ -24,16 +30,46 @@ const App: React.FC = () => {
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isSommelierPageOpen, setIsSommelierPageOpen] = useState(false);
   const [route, setRoute] = useState(getRouteFromHash());
+  const [settings, setSettings] = useState<RestaurantSettings | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [isAuthReady, setIsAuthReady] = useState(false);
 
   useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setUser(currentUser);
+      setIsAuthReady(true);
+      if (currentUser) {
+        await bootstrapAdmin();
+      }
+    });
+
     // Si la base de datos está vacía, la llena con datos de ejemplo.
     const initializeData = async () => {
       await seedLayout();
       await seedSettings();
       await seedCustomers();
       await seedReservations();
+      
+      const settingsData = await getRestaurantSettings();
+      setSettings(settingsData);
     }
     initializeData();
+
+    const handleHashChange = () => {
+      setRoute(getRouteFromHash());
+    };
+    window.addEventListener('hashchange', handleHashChange);
+
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+      unsubscribe();
+    };
+  }, []); // El array vacío asegura que esto solo se ejecute una vez al montar el componente.
+
+  // Efecto para manejar las animaciones de revelado (Intersection Observer)
+  useEffect(() => {
+    // Solo ejecutamos si estamos en la página principal y no hay modales abiertos
+    if (isAdminOpen || isSommelierPageOpen) return;
 
     const observerOptions = {
       threshold: 0.1,
@@ -48,32 +84,44 @@ const App: React.FC = () => {
       });
     }, observerOptions);
 
-    const elementsToObserve = document.querySelectorAll('.reveal');
-    elementsToObserve.forEach(el => observer.observe(el));
-    
-    const handleHashChange = () => {
-      setRoute(getRouteFromHash());
-    };
-    window.addEventListener('hashchange', handleHashChange);
+    // Pequeño delay para asegurar que el DOM se haya actualizado
+    const timer = setTimeout(() => {
+      const elementsToObserve = document.querySelectorAll('.reveal');
+      elementsToObserve.forEach(el => observer.observe(el));
+    }, 100);
 
     return () => {
-      elementsToObserve.forEach(el => observer.unobserve(el));
+      clearTimeout(timer);
       observer.disconnect();
-      window.removeEventListener('hashchange', handleHashChange);
     };
-  }, []); // El array vacío asegura que esto solo se ejecute una vez al montar el componente.
+  }, [settings, route, isAdminOpen, isSommelierPageOpen]);
+
+  useEffect(() => {
+    if (settings?.webImages?.favicon) {
+      const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+      if (link) {
+        link.href = settings.webImages.favicon;
+      } else {
+        const newLink = document.createElement('link');
+        newLink.rel = 'icon';
+        newLink.href = settings.webImages.favicon;
+        document.head.appendChild(newLink);
+      }
+    }
+  }, [settings]);
 
   const renderMainPage = () => (
     <>
-      <Navbar onOpenSommelier={() => setIsSommelierPageOpen(true)} onOpenAdmin={() => setIsAdminOpen(true)} />
-      <Hero />
+      <Navbar onOpenSommelier={() => setIsSommelierPageOpen(true)} onOpenAdmin={() => setIsAdminOpen(true)} logo={settings?.webImages?.logo} />
+      <Hero webImages={settings?.webImages} />
       
       <section id="about" className="py-24 max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-16 md:gap-24 items-center reveal">
         <div className="relative">
           <img 
-            src="https://images.unsplash.com/photo-1579532582937-16c108930bf6?auto=format&fit=crop&q=80&w=1974" 
+            src={settings?.webImages?.about || "https://images.unsplash.com/photo-1579532582937-16c108930bf6?auto=format&fit=crop&q=80&w=1974"} 
             alt="La Casona 1930 Don Garcia" 
             className="w-full h-[550px] md:h-[600px] object-cover shadow-2xl rounded-sm opacity-80"
+            referrerPolicy="no-referrer"
           />
           <div className="absolute -bottom-8 -right-4 md:-bottom-10 md:-right-10 bg-[#111] border-t-2 border-gold p-8 md:p-10 shadow-2xl">
              <p className="text-4xl font-serif text-gold mb-2">1930</p>
@@ -104,7 +152,7 @@ const App: React.FC = () => {
       </section>
 
       <div id="menu" className="reveal">
-        <Menu />
+        <Menu webImages={settings?.webImages} />
       </div>
 
       <div className="reveal">
@@ -116,14 +164,18 @@ const App: React.FC = () => {
       </div>
 
       <div id="reservation" className="reveal">
-        <Reservation />
+        <Reservation webImages={settings?.webImages} />
       </div>
 
       <footer className="bg-luxury-black py-20 text-stone-400 border-t border-white/5">
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid md:grid-cols-3 gap-12 mb-16">
             <div className="col-span-1">
-              <h4 className="text-gold font-serif text-3xl mb-6 tracking-widest uppercase">Don García</h4>
+              {settings?.webImages?.logo ? (
+                <img src={settings.webImages.logo} alt="Don García" className="h-16 w-auto object-contain mb-6" referrerPolicy="no-referrer" />
+              ) : (
+                <h4 className="text-gold font-serif text-3xl mb-6 tracking-widest uppercase">Don García</h4>
+              )}
               <p className="max-w-md leading-relaxed text-base mb-8">
                 Cocina de excelencia en un entorno patrimonial único. La tradición de la parrilla y el río desde 1930.
               </p>
@@ -160,7 +212,13 @@ const App: React.FC = () => {
 
   return (
     <div className={`min-h-screen bg-luxury-black text-stone-400 ${isSommelierPageOpen || isAdminOpen ? 'overflow-hidden' : ''}`}>
-      {isAdminOpen ? <AdminMenu onClose={() => setIsAdminOpen(false)} /> : 
+      {isAdminOpen ? (
+        user ? (
+          <AdminMenu onClose={() => setIsAdminOpen(false)} />
+        ) : (
+          <Login onLoginSuccess={() => setIsAdminOpen(true)} onClose={() => setIsAdminOpen(false)} />
+        )
+      ) : 
         isSommelierPageOpen ? <SommelierPage onClose={() => setIsSommelierPageOpen(false)} /> : 
         (route === '/reservar' ? <ReservationPage /> : renderMainPage())
       }

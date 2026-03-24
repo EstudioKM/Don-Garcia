@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { getRestaurantSettings, saveRestaurantSettings } from '../../services/settingsRepository';
-import { getLayout } from '../../services/layoutRepository';
+import { getLayout, saveLayout } from '../../services/layoutRepository';
 import { RestaurantSettings, DaySetting, Layout, Environment, SpecialDay, Shift } from '../../types';
 import { produce } from 'immer';
 import AdminLayout from './AdminLayout';
-import { Calendar, Plus, Trash2, Info, ChevronDown, ChevronUp } from 'lucide-react';
+import AdminImages from './AdminImages';
+import { Calendar, Plus, Trash2, Info, ChevronDown, ChevronUp, Image as ImageIcon } from 'lucide-react';
 
 const DayCard: React.FC<{
   dayKey: keyof RestaurantSettings['days'];
@@ -117,7 +118,7 @@ const DayCard: React.FC<{
 
 
 const AdminSettings: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'horarios' | 'especiales' | 'diseno'>('horarios');
+  const [activeTab, setActiveTab] = useState<'horarios' | 'especiales' | 'diseno' | 'imagenes'>('horarios');
   const [settings, setSettings] = useState<RestaurantSettings | null>(null);
   const [layout, setLayout] = useState<Layout | null>(null);
   const [loading, setLoading] = useState(true);
@@ -194,11 +195,14 @@ const AdminSettings: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!settings) return;
     setIsSaving(true);
     setStatus('idle');
     try {
-      await saveRestaurantSettings(settings);
+      const promises = [];
+      if (settings) promises.push(saveRestaurantSettings(settings));
+      if (layout) promises.push(saveLayout(layout));
+      
+      await Promise.all(promises);
       setStatus('success');
       setTimeout(() => setStatus('idle'), 3000);
     } catch (error) {
@@ -217,18 +221,20 @@ const AdminSettings: React.FC = () => {
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-6 mb-10">
         <div>
           <h3 className="text-2xl font-serif text-white">
-            {activeTab === 'horarios' ? 'Horarios Generales' : activeTab === 'especiales' ? 'Días Especiales' : 'Diseño del Salón'}
+            {activeTab === 'horarios' ? 'Horarios Generales' : activeTab === 'especiales' ? 'Días Especiales' : activeTab === 'diseno' ? 'Diseño del Salón' : 'Imágenes del Sitio'}
           </h3>
           <p className="text-stone-500 text-sm mt-1">
             {activeTab === 'horarios' ? 'Define la configuración semanal base de tu restaurante.' : 
              activeTab === 'especiales' ? 'Configura excepciones para feriados o eventos puntuales.' : 
-             'Organice los ambientes, mesas y capacidad de su restaurante.'}
+             activeTab === 'diseno' ? 'Organice los ambientes, mesas y capacidad de su restaurante.' :
+             'Personalice la identidad visual de su página web.'}
           </p>
         </div>
-        <div className="flex gap-2 rounded-full bg-stone-800/50 p-1 self-start md:self-center">
-          <button onClick={() => setActiveTab('horarios')} className={`px-4 py-1.5 text-[10px] rounded-full uppercase tracking-widest font-bold transition-colors ${activeTab === 'horarios' ? 'bg-gold text-black' : 'text-stone-400'}`}>Horarios</button>
-          <button onClick={() => setActiveTab('especiales')} className={`px-4 py-1.5 text-[10px] rounded-full uppercase tracking-widest font-bold transition-colors ${activeTab === 'especiales' ? 'bg-gold text-black' : 'text-stone-400'}`}>Especiales</button>
-          <button onClick={() => setActiveTab('diseno')} className={`px-4 py-1.5 text-[10px] rounded-full uppercase tracking-widest font-bold transition-colors ${activeTab === 'diseno' ? 'bg-gold text-black' : 'text-stone-400'}`}>Diseño Salón</button>
+        <div className="flex gap-2 rounded-full bg-stone-800/50 p-1 self-start md:self-center overflow-x-auto max-w-full">
+          <button onClick={() => setActiveTab('horarios')} className={`px-4 py-1.5 text-[10px] rounded-full uppercase tracking-widest font-bold transition-colors whitespace-nowrap ${activeTab === 'horarios' ? 'bg-gold text-black' : 'text-stone-400'}`}>Horarios</button>
+          <button onClick={() => setActiveTab('especiales')} className={`px-4 py-1.5 text-[10px] rounded-full uppercase tracking-widest font-bold transition-colors whitespace-nowrap ${activeTab === 'especiales' ? 'bg-gold text-black' : 'text-stone-400'}`}>Especiales</button>
+          <button onClick={() => setActiveTab('diseno')} className={`px-4 py-1.5 text-[10px] rounded-full uppercase tracking-widest font-bold transition-colors whitespace-nowrap ${activeTab === 'diseno' ? 'bg-gold text-black' : 'text-stone-400'}`}>Diseño Salón</button>
+          <button onClick={() => setActiveTab('imagenes')} className={`px-4 py-1.5 text-[10px] rounded-full uppercase tracking-widest font-bold transition-colors whitespace-nowrap ${activeTab === 'imagenes' ? 'bg-gold text-black' : 'text-stone-400'}`}>Imágenes Web</button>
         </div>
       </div>
 
@@ -402,7 +408,13 @@ const AdminSettings: React.FC = () => {
 
       {activeTab === 'diseno' && (
         <div className="animate-fadeInUp">
-          <AdminLayout />
+          <AdminLayout layout={layout} setLayout={setLayout} />
+        </div>
+      )}
+
+      {activeTab === 'imagenes' && (
+        <div className="animate-fadeInUp">
+          <AdminImages settings={settings} setSettings={setSettings} />
         </div>
       )}
     </>

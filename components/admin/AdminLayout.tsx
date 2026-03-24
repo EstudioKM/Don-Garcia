@@ -1,41 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { getLayout, saveLayout } from '../../services/layoutRepository';
+import React, { useState } from 'react';
 import { Layout, Environment, Table } from '../../types';
 import { produce } from 'immer';
-import { Plus, Trash2, Calculator, X, Link } from 'lucide-react';
+import { Plus, Trash2, Calculator, X, Link, Image as ImageIcon, Upload } from 'lucide-react';
 
-const AdminLayout: React.FC = () => {
-  const [layout, setLayout] = useState<Layout | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
+interface AdminLayoutProps {
+  layout: Layout | null;
+  setLayout: React.Dispatch<React.SetStateAction<Layout | null>>;
+}
+
+const AdminLayout: React.FC<AdminLayoutProps> = ({ layout, setLayout }) => {
   const [envToDelete, setEnvToDelete] = useState<number | null>(null);
   const [editingTableJoin, setEditingTableJoin] = useState<{ envIndex: number, tableIndex: number } | null>(null);
-
-  useEffect(() => {
-    const fetchLayout = async () => {
-      const layoutData = await getLayout();
-      setLayout(layoutData);
-      setLoading(false);
-    };
-    fetchLayout();
-  }, []);
-
-  const handleSave = async () => {
-    if (!layout) return;
-    setIsSaving(true);
-    setStatus('idle');
-    try {
-      await saveLayout(layout);
-      setStatus('success');
-      setTimeout(() => setStatus('idle'), 3000);
-    } catch (error) {
-      console.error(error);
-      setStatus('error');
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   const handleEnvironmentChange = (envIndex: number, field: 'name' | 'maxCapacity' | 'image' | 'description', value: string | number) => {
     if (!layout) return;
@@ -54,6 +29,24 @@ const AdminLayout: React.FC = () => {
       }
     });
     setLayout(nextState);
+  };
+
+  const handleImageUpload = (envIndex: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check file size (limit to ~500KB to stay within Firestore 1MB document limit)
+    if (file.size > 500 * 1024) {
+      alert("La imagen es demasiado grande. Por favor, sube una imagen de menos de 500KB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      handleEnvironmentChange(envIndex, 'image', base64String);
+    };
+    reader.readAsDataURL(file);
   };
   
   const handleTableChange = (envIndex: number, tableIndex: number, field: 'name' | 'capacity', value: string | number) => {
@@ -147,8 +140,6 @@ const AdminLayout: React.FC = () => {
     setLayout(nextState);
   };
 
-  if (loading) return <div className="text-white text-center p-10">Cargando diseño del salón...</div>;
-
   return (
     <div className="space-y-8">
       {/* Confirmation Modal */}
@@ -241,17 +232,6 @@ const AdminLayout: React.FC = () => {
             <Plus size={14} />
             Nuevo Ambiente
           </button>
-          <button 
-            onClick={handleSave} 
-            disabled={isSaving} 
-            className={`flex-1 sm:flex-none px-6 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all duration-300 border ${ 
-              status === 'success' ? 'bg-green-800 border-green-700 text-white' : 
-              status === 'error' ? 'bg-red-800 border-red-700 text-white' : 
-              'bg-gold border-gold text-white hover:bg-white hover:text-black shadow-lg shadow-gold/10'
-            }`}
-          >
-            {isSaving ? 'Guardando...' : status === 'success' ? '¡Listo!' : 'Guardar Diseño'}
-          </button>
         </div>
       </div>
 
@@ -273,13 +253,36 @@ const AdminLayout: React.FC = () => {
 
                 <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                   <div className="space-y-1">
-                    <label className="text-[9px] uppercase tracking-widest text-stone-500 font-bold">URL de Imagen</label>
-                    <input 
-                      value={env.image || ''} 
-                      onChange={e => handleEnvironmentChange(envIndex, 'image', e.target.value)} 
-                      className="w-full bg-stone-950 text-stone-300 py-1.5 px-3 rounded-lg border border-stone-800 focus:border-gold outline-none text-xs"
-                      placeholder="https://images.unsplash.com/..."
-                    />
+                    <label className="text-[9px] uppercase tracking-widest text-stone-500 font-bold">Imagen del Ambiente</label>
+                    <div className="flex gap-3 items-start">
+                      <div className="relative w-16 h-16 rounded-lg bg-stone-950 border border-stone-800 overflow-hidden flex-shrink-0 group/img">
+                        {env.image ? (
+                          <img src={env.image} alt={env.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-stone-700">
+                            <ImageIcon size={20} />
+                          </div>
+                        )}
+                        <label className="absolute inset-0 bg-black/60 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
+                          <Upload size={16} className="text-white" />
+                          <input 
+                            type="file" 
+                            className="hidden" 
+                            accept="image/*"
+                            onChange={e => handleImageUpload(envIndex, e)}
+                          />
+                        </label>
+                      </div>
+                      <div className="flex-grow">
+                        <input 
+                          value={env.image || ''} 
+                          onChange={e => handleEnvironmentChange(envIndex, 'image', e.target.value)} 
+                          className="w-full bg-stone-950 text-stone-300 py-1.5 px-3 rounded-lg border border-stone-800 focus:border-gold outline-none text-xs"
+                          placeholder="URL de la imagen..."
+                        />
+                        <p className="text-[8px] text-stone-600 mt-1 uppercase tracking-tighter">Pega una URL o haz clic en el cuadro para subir</p>
+                      </div>
+                    </div>
                   </div>
                   <div className="space-y-1">
                     <label className="text-[9px] uppercase tracking-widest text-stone-500 font-bold">Descripción</label>

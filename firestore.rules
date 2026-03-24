@@ -1,0 +1,131 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {uid}
+    // Fields:
+    //   - email: string (required, email format) - The user's email address.
+    //   - role: string (required, ['admin', 'staff']) - The user's role.
+    //   - uid: string (required) - The Firebase Auth UID.
+    //   - createdAt: timestamp (required) - When the user record was created.
+    //
+    // Collection: reservations
+    // Document ID: {reservationId}
+    // Fields:
+    //   - name: string (required)
+    //   - email: string (required, email format)
+    //   - phone: string (required)
+    //   - date: string (required)
+    //   - time: string (required)
+    //   - guests: number (required)
+    //   - status: string (required, ['pending', 'confirmed', 'cancelled'])
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: menu
+    // Document ID: {itemId}
+    // Fields:
+    //   - name: string (required)
+    //   - description: string (optional)
+    //   - price: number (required)
+    //   - category: string (required)
+    //   - available: bool (required)
+    //
+    // Collection: settings
+    // Document ID: restaurant
+    // Fields:
+    //   - name: string
+    //   - description: string
+    //   - webImages: map
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "holaestudiokm@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+
+    // Users collection
+    match /users/{userId} {
+      function isValidUser(data) {
+        return hasOnlyAllowedFields(['email', 'role', 'uid', 'createdAt']) &&
+               data.email is string && isValidEmail(data.email) &&
+               data.role in ['admin', 'staff'] &&
+               data.uid is string &&
+               data.createdAt is timestamp;
+      }
+
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // Only admins can create/update other users, or the owner can create their own 'staff' role (but not admin)
+      // The bootstrap admin (owner email) can create their own admin doc.
+      allow create: if isAuthenticated() && isValidUser(request.resource.data) && 
+                    (isAdmin() || 
+                     (isOwner(userId) && request.resource.data.role == 'staff') ||
+                     (request.auth.token.email == "holaestudiokm@gmail.com" && isOwner(userId) && request.resource.data.role == 'admin'));
+      
+      allow update: if isAuthenticated() && isValidUser(request.resource.data) && 
+                    (isAdmin() || (isOwner(userId) && request.resource.data.role == resource.data.role));
+      
+      allow delete: if isAdmin();
+    }
+
+    // Reservations
+    match /reservations/{reservationId} {
+      allow read: if isAdmin();
+      allow create: if true; // Public can create reservations
+      allow update, delete: if isAdmin();
+    }
+
+    // Menu
+    match /menu/{itemId} {
+      allow read: if true; // Public can read menu
+      allow write: if isAdmin();
+    }
+
+    // Settings
+    match /settings/{settingId} {
+      allow read: if true; // Public can read settings
+      allow write: if isAdmin();
+    }
+
+    // Default deny
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getMenuFromDB } from '../services/menuRepository';
+import { WebImages } from '../types';
+
+interface MenuProps {
+  webImages?: WebImages;
+}
 
 const formatPrice = (value: string): string => {
     if (typeof value !== 'string' || !value) return '';
@@ -20,7 +25,7 @@ const formatPrice = (value: string): string => {
     return `$${new Intl.NumberFormat('es-AR').format(number)}`;
 }
 
-const Menu: React.FC = () => {
+const Menu: React.FC<MenuProps> = ({ webImages }) => {
   type TabType = 'entradas' | 'pescados' | 'carnes' | 'pastas' | 'guarniciones' | 'postres' | 'vinos' | 'bebidas';
   
   const [activeTab, setActiveTab] = useState<TabType>('entradas');
@@ -98,6 +103,11 @@ const Menu: React.FC = () => {
 
   return (
     <section className="py-24 bg-[#0a0a0a] border-y border-stone-900 relative">
+      {webImages?.menu && (
+        <div className="absolute inset-0 z-0 opacity-10 pointer-events-none">
+          <img src={webImages.menu} alt="Menu Background" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+        </div>
+      )}
       <div className="max-w-7xl mx-auto px-6 relative z-10">
         <div className="text-center mb-16">
           <span className="text-gold uppercase tracking-[0.4em] text-xs font-bold mb-4 block underline underline-offset-4 decoration-gold/30">Selección Don García</span>

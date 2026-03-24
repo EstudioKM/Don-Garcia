@@ -119,20 +119,17 @@ const Calendar: React.FC<{
         key={day}
         disabled={disabled}
         onClick={() => onSelect(dateStr)}
-        className={`aspect-square w-full flex flex-col items-center justify-center rounded-xl sm:rounded-2xl text-base sm:text-lg font-bold transition-all relative ${
+        className={`aspect-square w-full flex flex-col items-center justify-center rounded-2xl text-base sm:text-lg font-bold transition-all relative group ${
           isSelected 
-          ? 'bg-gold text-black shadow-[0_0_25px_rgba(176,141,72,0.5)] z-10' 
+          ? 'bg-gold text-black shadow-[0_0_30px_rgba(176,141,72,0.6)] z-10 scale-110' 
           : disabled 
-            ? 'text-stone-800 cursor-not-allowed opacity-20' 
-            : 'text-stone-200 hover:bg-white/10 hover:text-white'
+            ? 'text-stone-800 cursor-not-allowed opacity-10' 
+            : 'text-stone-300 hover:bg-white/10 hover:text-white hover:scale-105'
         }`}
       >
-        <span>{day}</span>
-        {isSelected && (
-          <motion.div 
-            layoutId="activeDay"
-            className="absolute inset-0 border-2 border-gold rounded-xl sm:rounded-2xl"
-          />
+        <span className="relative z-10">{day}</span>
+        {!disabled && !isSelected && (
+          <div className="absolute bottom-2 w-1 h-1 rounded-full bg-gold/20 group-hover:bg-gold/50 transition-colors" />
         )}
       </button>
     );
@@ -341,34 +338,32 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
     return filteredTimes;
   }, [formData.shift, formData.guests, formData.date, layout, settings, dateReservations, isCheckingAvailability]);
 
-  const filteredEnvironments = useMemo(() => {
-    if (!layout || !settings || !formData.date || !formData.shift) return layout?.environments || [];
+  const environmentsWithAvailability = useMemo(() => {
+    if (!layout || !settings || !formData.date || !formData.shift) return [];
     
     let activeEnvs = layout.environments;
 
-    // Check special days first
+    // Determine which environments are active for this shift
     const specialDay = settings.specialDays?.find(sd => sd.date === formData.date);
+    const shiftKey = formData.shift as 'mediodia' | 'noche';
+    
+    let activeEnvIds: string[] | undefined;
     if (specialDay) {
-      const activeEnvIds = specialDay.shifts[formData.shift as 'mediodia' | 'noche'].activeEnvironments;
-      if (activeEnvIds && activeEnvIds.length > 0) {
-        activeEnvs = layout.environments.filter(env => activeEnvIds.includes(env.id));
-      }
+      activeEnvIds = specialDay.shifts[shiftKey].activeEnvironments;
     } else {
       const dateObj = new Date(formData.date + 'T00:00:00-03:00');
       const dayIndex = dateObj.getUTCDay();
       const dayKeys = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
       const dayKey = dayKeys[dayIndex] as keyof RestaurantSettings['days'];
-      const daySettings = settings.days[dayKey];
-      
-      const activeEnvIds = daySettings.shifts[formData.shift as 'mediodia' | 'noche'].activeEnvironments;
-      if (activeEnvIds && activeEnvIds.length > 0) {
-        activeEnvs = layout.environments.filter(env => activeEnvIds.includes(env.id));
-      }
+      activeEnvIds = settings.days[dayKey].shifts[shiftKey].activeEnvironments;
     }
 
-    // Filter by capacity and table availability
-    return activeEnvs.filter(env => {
-        const shiftKey = formData.shift as 'mediodia' | 'noche';
+    if (activeEnvIds && activeEnvIds.length > 0) {
+      activeEnvs = layout.environments.filter(env => activeEnvIds!.includes(env.id));
+    }
+
+    // Now calculate availability for each active environment
+    return activeEnvs.map(env => {
         const reservationsForShift = dateReservations.filter(r => {
             const hour = parseInt(r.time.split(':')[0]);
             return shiftKey === 'mediodia' ? hour < 16 : hour >= 16;
@@ -379,9 +374,11 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
             .reduce((sum, r) => sum + Number(r.guests), 0);
         
         // Coarse check by total capacity
-        if ((guestsInEnv + Number(formData.guests)) > env.maxCapacity) return false;
+        const hasCapacity = (guestsInEnv + Number(formData.guests)) <= env.maxCapacity;
 
         // Fine check by table availability if time is selected
+        let hasTables = true;
+        let reason = '';
         if (formData.time) {
           const availability = checkAvailability(
             env,
@@ -389,10 +386,19 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
             formData.time,
             Number(formData.guests)
           );
-          return availability.available;
+          hasTables = availability.available;
+          if (!availability.available) {
+            reason = 'Sin mesas para este grupo';
+          }
         }
 
-        return true;
+        const isAvailable = hasCapacity && hasTables;
+
+        return {
+          ...env,
+          isAvailable,
+          availabilityReason: !hasCapacity ? 'Capacidad completa' : reason
+        };
     });
 
   }, [layout, settings, formData.date, formData.shift, formData.time, formData.guests, dateReservations]);
@@ -778,13 +784,13 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
                 <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
                 <p className="text-stone-400 text-sm uppercase tracking-widest">Verificando disponibilidad...</p>
               </div>
-            ) : filteredEnvironments.length === 0 ? (
+            ) : environmentsWithAvailability.length === 0 ? (
               <div className="bg-stone-900/50 border border-red-500/30 rounded-[2rem] p-8 text-center space-y-6">
                 <AlertCircle className="w-12 h-12 text-red-400 mx-auto opacity-80" />
                 <div>
-                  <h3 className="text-xl font-serif text-white mb-2">Sin disponibilidad</h3>
+                  <h3 className="text-xl font-serif text-white mb-2">Sin ambientes activos</h3>
                   <p className="text-stone-400 text-sm">
-                    Lo sentimos, no contamos con espacios disponibles para {formData.guests} comensales el {formData.date} a las {formData.time}hs.
+                    No hay espacios configurados para este turno.
                   </p>
                 </div>
                 <button
@@ -795,36 +801,71 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {filteredEnvironments.map(env => (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {environmentsWithAvailability.map(env => (
                   <div key={env.id} className="relative group">
                     <button
+                      disabled={!env.isAvailable}
                       onClick={() => {
-                        setFormData(prev => ({ ...prev, environmentId: env.id }));
-                        nextStep();
+                        if (env.isAvailable) {
+                          setFormData(prev => ({ ...prev, environmentId: env.id }));
+                          nextStep();
+                        }
                       }}
-                      className={`w-full overflow-hidden rounded-[2rem] border transition-all text-left relative ${
+                      className={`w-full overflow-hidden rounded-[2.5rem] border transition-all text-left relative flex flex-col ${
                         formData.environmentId === env.id 
-                        ? 'border-gold shadow-[0_0_30px_rgba(176,141,72,0.3)] scale-[1.02] z-10' 
-                        : 'border-white/10 hover:border-white/30 bg-stone-900/30'
+                        ? 'border-gold shadow-[0_0_40px_rgba(176,141,72,0.4)] scale-[1.02] z-10 bg-stone-900' 
+                        : !env.isAvailable
+                          ? 'border-white/5 bg-stone-950/50 opacity-60 cursor-not-allowed'
+                          : 'border-white/10 hover:border-white/30 bg-stone-900/40 hover:bg-stone-900/60'
                       }`}
                     >
-                      <div className="h-40 sm:h-48 relative">
+                      <div className="h-48 sm:h-56 relative overflow-hidden">
                         <img 
                           src={env.image || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=600"} 
                           alt={env.name}
-                          className="w-full h-full object-cover opacity-50 group-hover:opacity-70 transition-opacity"
+                          className={`w-full h-full object-cover transition-all duration-700 ${
+                            formData.environmentId === env.id ? 'scale-110 opacity-80' : 'opacity-40 group-hover:opacity-60 group-hover:scale-105'
+                          } ${!env.isAvailable ? 'grayscale' : ''}`}
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-6">
-                          <h3 className="text-2xl font-serif text-white mb-2">{env.name}</h3>
-                          <p className="text-stone-300 text-[10px] uppercase tracking-widest font-bold">Capacidad: {env.maxCapacity}p</p>
-                        </div>
-                        {formData.environmentId === env.id && (
-                          <div className="absolute top-4 right-4 text-gold bg-black/50 rounded-full p-1 backdrop-blur-sm">
-                            <CheckCircle2 className="w-6 h-6" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-stone-900 via-stone-900/40 to-transparent" />
+                        
+                        {!env.isAvailable && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
+                            <div className="bg-red-500/90 text-white px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest shadow-lg">
+                              {env.availabilityReason}
+                            </div>
                           </div>
                         )}
+
+                        <div className="absolute bottom-0 left-0 right-0 p-6">
+                          <div className="flex items-center justify-between mb-1">
+                            <h3 className={`text-2xl font-serif leading-none ${formData.environmentId === env.id ? 'text-gold' : 'text-white'}`}>
+                              {env.name}
+                            </h3>
+                            {formData.environmentId === env.id && (
+                              <CheckCircle2 className="w-6 h-6 text-gold" />
+                            )}
+                          </div>
+                          <div className="flex items-center space-x-3">
+                            <span className="text-stone-400 text-[10px] uppercase tracking-widest font-bold">Capacidad: {env.maxCapacity}p</span>
+                            {env.isAvailable && (
+                              <span className="flex items-center text-[10px] text-emerald-500 font-bold uppercase tracking-widest">
+                                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5 animate-pulse" />
+                                Disponible
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
+                      
+                      {env.description && (
+                        <div className="px-6 pb-6 mt-1">
+                          <p className="text-stone-500 text-xs line-clamp-2 font-light leading-relaxed">
+                            {env.description}
+                          </p>
+                        </div>
+                      )}
                     </button>
                     
                     <button 
@@ -832,7 +873,7 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
                         e.stopPropagation();
                         setSelectedEnvForModal(env);
                       }}
-                      className="absolute top-4 right-4 p-2.5 bg-black/50 backdrop-blur-md rounded-full text-white/70 hover:text-gold hover:bg-black/80 transition-all border border-white/10 z-20"
+                      className="absolute top-4 right-4 p-3 bg-black/60 backdrop-blur-xl rounded-full text-white/50 hover:text-gold hover:bg-black/80 transition-all border border-white/10 z-20 shadow-xl"
                       title="Ver detalles"
                     >
                       <Info className="w-5 h-5" />
@@ -1291,6 +1332,11 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
                   {formData.guests > 0 && <span>{formData.guests}p</span>}
                   {formData.date && <span>• {new Date(formData.date + 'T00:00:00-03:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}</span>}
                   {formData.time && <span>• {formData.time}</span>}
+                  {formData.environmentId && (
+                    <span className="text-gold truncate">
+                      • {layout?.environments.find(e => e.id === formData.environmentId)?.name}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
