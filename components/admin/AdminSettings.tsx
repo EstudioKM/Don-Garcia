@@ -226,8 +226,13 @@ const AdminSettings: React.FC = () => {
             canvas.height = height;
             const ctx = canvas.getContext('2d');
             if (ctx) {
-              ctx.drawImage(img, 0, 0, width, height);
-              resolve(canvas.toDataURL('image/jpeg', quality));
+              try {
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', quality));
+              } catch (e) {
+                console.warn('Could not compress image (likely cross-origin URL), saving as is.', e);
+                resolve(base64Str);
+              }
             } else {
               resolve(base64Str);
             }
@@ -240,12 +245,12 @@ const AdminSettings: React.FC = () => {
       const promises = [];
       
       if (settings) {
-        const compressedSettings = { ...settings };
+        const compressedSettings = JSON.parse(JSON.stringify(settings));
         if (compressedSettings.webImages) {
           for (const key of Object.keys(compressedSettings.webImages)) {
             const val = compressedSettings.webImages[key as keyof typeof compressedSettings.webImages];
             if (val) {
-              compressedSettings.webImages[key as keyof typeof compressedSettings.webImages] = await compressBase64Image(val, 800, 0.5);
+              compressedSettings.webImages[key as keyof typeof compressedSettings.webImages] = await compressBase64Image(val, 1200, 0.7);
             }
           }
         }
@@ -257,7 +262,7 @@ const AdminSettings: React.FC = () => {
         compressedLayout.environments = await Promise.all(
           compressedLayout.environments.map(async (env) => {
             if (env.image) {
-              return { ...env, image: await compressBase64Image(env.image, 300, 0.4) };
+              return { ...env, image: await compressBase64Image(env.image, 600, 0.6) };
             }
             return env;
           })

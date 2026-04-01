@@ -23,12 +23,13 @@ import { getRestaurantSettings } from '../services/settingsRepository';
 import { getLayout } from '../services/layoutRepository';
 import { sendReservationWebhook } from '../services/webhookService';
 import { Timestamp } from 'firebase/firestore';
-import { Reservation, RestaurantSettings, Layout, Environment } from '../types';
+import { Reservation, RestaurantSettings, Layout, Environment, WebImages } from '../types';
 import { getArgentinaTime } from '../utils/dateUtils';
 import { checkAvailability } from '../utils/reservationLogic';
 
 interface ReservationFlowProps {
   onSubmittingChange: (isSubmitting: boolean) => void;
+  webImages?: WebImages;
 }
 
 type Step = 'welcome' | 'guests' | 'date' | 'time' | 'sector' | 'occasion' | 'preferences' | 'notes' | 'name' | 'phone' | 'confirming' | 'success';
@@ -163,7 +164,7 @@ const Calendar: React.FC<{
   );
 };
 
-const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange }) => {
+const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange, webImages }) => {
   const [step, setStep] = useState<Step>('welcome');
   const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -568,9 +569,10 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
 
             <div className="relative w-full aspect-[4/3] rounded-[2.5rem] overflow-hidden shadow-2xl group border border-white/5">
               <img 
-                src="https://images.unsplash.com/photo-1579532582937-16c108930bf6?auto=format&fit=crop&q=80&w=1000" 
+                src={webImages?.reservation || "https://images.unsplash.com/photo-1579532582937-16c108930bf6?auto=format&fit=crop&q=80&w=1000"} 
                 alt="Don Garcia" 
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000"
+                referrerPolicy="no-referrer"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
             </div>
@@ -827,6 +829,7 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
                           className={`w-full h-full object-cover transition-all duration-700 ${
                             formData.environmentId === env.id ? 'scale-110 opacity-80' : 'opacity-40 group-hover:opacity-60 group-hover:scale-105'
                           } ${!env.isAvailable ? 'grayscale' : ''}`}
+                          referrerPolicy="no-referrer"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-stone-900 via-stone-900/40 to-transparent" />
                         
@@ -898,6 +901,7 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange })
                         src={selectedEnvForModal.image || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=800"} 
                         alt={selectedEnvForModal.name}
                         className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
                       />
                       <button 
                         onClick={() => setSelectedEnvForModal(null)}

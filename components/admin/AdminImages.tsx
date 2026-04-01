@@ -58,11 +58,13 @@ const AdminImages: React.FC<AdminImagesProps> = ({ settings, setSettings }) => {
   };
 
   const imageFields: { id: keyof WebImages; label: string; description: string }[] = [
-    { id: 'logo', label: 'Logo del Restaurante', description: 'Se muestra en la barra de navegación y pie de página.' },
+    { id: 'logo', label: 'Logo del Restaurante', description: 'Se muestra en la barra de navegación y pie de página (si está configurado).' },
     { id: 'hero', label: 'Imagen Principal (Hero)', description: 'La imagen de fondo que se ve al entrar al sitio.' },
     { id: 'about', label: 'Imagen "Sobre Nosotros"', description: 'Imagen que acompaña la sección de historia del restaurante.' },
     { id: 'menu', label: 'Imagen Sección Menú', description: 'Fondo o imagen destacada para la sección de la carta.' },
     { id: 'reservation', label: 'Imagen Sección Reservas', description: 'Imagen que aparece junto al formulario de reservas.' },
+    { id: 'events', label: 'Imagen Sección Eventos', description: 'Imagen que acompaña la sección de eventos exclusivos.' },
+    { id: 'location', label: 'Imagen Sección Ubicación', description: 'Imagen de la fachada o ubicación del restaurante.' },
     { id: 'favicon', label: 'Favicon', description: 'Icono pequeño que aparece en la pestaña del navegador.' },
   ];
 

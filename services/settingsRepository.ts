@@ -1,6 +1,6 @@
 
 import { db } from "../firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
 import { RestaurantSettings, DaySetting, SommelierSettings } from "../types";
 
 const COLLECTION_NAME = "configuration";
@@ -71,6 +71,31 @@ export const getRestaurantSettings = async (): Promise<RestaurantSettings> => {
     return DEFAULT_SETTINGS;
   }
 };
+export const subscribeToRestaurantSettings = (callback: (settings: RestaurantSettings) => void) => {
+  const docRef = doc(db, COLLECTION_NAME, DOC_ID);
+  return onSnapshot(docRef, (docSnap) => {
+    if (docSnap.exists()) {
+      const dbData = docSnap.data();
+      callback({
+        ...DEFAULT_SETTINGS,
+        ...dbData,
+        sommelier: { ...DEFAULT_SETTINGS.sommelier, ...dbData.sommelier },
+        days: { ...DEFAULT_SETTINGS.days, ...dbData.days },
+      });
+    } else {
+      callback(DEFAULT_SETTINGS);
+    }
+  }, (error) => {
+    const errorMessage = error instanceof Error ? error.message : (error as any)?.message || String(error);
+    if (errorMessage.includes('client is offline')) {
+      console.warn("Firebase client is offline. Using default restaurant settings.");
+    } else {
+      console.error("Error subscribing to restaurant settings:", error);
+    }
+    callback(DEFAULT_SETTINGS);
+  });
+};
+
 // FIX: Renamed function to getSettingsFromDB as it was causing import errors.
 export const getSettingsFromDB = async (): Promise<SommelierSettings> => {
   const settings = await getRestaurantSettings();

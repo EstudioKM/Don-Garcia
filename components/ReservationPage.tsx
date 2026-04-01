@@ -1,7 +1,12 @@
 import React, { useState } from 'react';
 import ReservationFlow from './ReservationFlow';
+import { WebImages } from '../types';
 
-const ReservationPage: React.FC = () => {
+interface ReservationPageProps {
+  webImages?: WebImages;
+}
+
+const ReservationPage: React.FC<ReservationPageProps> = ({ webImages }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleBackClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
@@ -15,6 +20,7 @@ const ReservationPage: React.FC = () => {
       <main className="flex-grow p-4 sm:p-6 pb-32 max-w-2xl mx-auto w-full">
         <ReservationFlow 
           onSubmittingChange={setIsSubmitting} 
+          webImages={webImages}
         />
       </main>
     </div>

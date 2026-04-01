@@ -1,6 +1,11 @@
 import React from 'react';
+import { WebImages } from '../types';
 
-const EventsSection: React.FC = () => {
+interface EventsSectionProps {
+  webImages?: WebImages;
+}
+
+const EventsSection: React.FC<EventsSectionProps> = ({ webImages }) => {
   const handleReservationClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
     window.location.hash = '/reservar';
@@ -24,9 +29,10 @@ const EventsSection: React.FC = () => {
         </div>
         <div className="relative h-[400px] md:h-[650px] order-1 md:order-2">
           <img 
-            src="https://images.unsplash.com/photo-1600891964092-4316c288032e?auto=format&fit=crop&q=80&w=1000" 
+            src={webImages?.events || "https://images.unsplash.com/photo-1600891964092-4316c288032e?auto=format&fit=crop&q=80&w=1000"} 
             alt="Plato de carne de alta cocina servido en un evento exclusivo" 
             className="w-full h-full object-cover rounded-sm shadow-2xl opacity-70"
+            referrerPolicy="no-referrer"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
           <div className="absolute bottom-6 md:bottom-10 left-6 md:left-10">

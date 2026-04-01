@@ -10,7 +10,7 @@ import EventsSection from './components/EventsSection';
 import AdminMenu from './components/AdminMenu';
 import Login from './components/Login';
 import { seedReservations, seedLayout, seedSettings, seedCustomers } from './services/seedService';
-import { getRestaurantSettings } from './services/settingsRepository';
+import { getRestaurantSettings, subscribeToRestaurantSettings } from './services/settingsRepository';
 import { RestaurantSettings } from './types';
 import ReservationPage from './components/ReservationPage';
 import { auth } from './firebase';
@@ -33,6 +33,7 @@ const App: React.FC = () => {
   const [settings, setSettings] = useState<RestaurantSettings | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [isSettingsReady, setIsSettingsReady] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -43,6 +44,7 @@ const App: React.FC = () => {
       }
     });
 
+    let unsubscribeSettings: () => void;
     // Si la base de datos está vacía, la llena con datos de ejemplo.
     const initializeData = async () => {
       await seedLayout();
@@ -50,8 +52,10 @@ const App: React.FC = () => {
       await seedCustomers();
       await seedReservations();
       
-      const settingsData = await getRestaurantSettings();
-      setSettings(settingsData);
+      unsubscribeSettings = subscribeToRestaurantSettings((newSettings) => {
+        setSettings(newSettings);
+        setIsSettingsReady(true);
+      });
     }
     initializeData();
 
@@ -63,6 +67,9 @@ const App: React.FC = () => {
     return () => {
       window.removeEventListener('hashchange', handleHashChange);
       unsubscribe();
+      if (unsubscribeSettings) {
+        unsubscribeSettings();
+      }
     };
   }, []); // El array vacío asegura que esto solo se ejecute una vez al montar el componente.
 
@@ -156,11 +163,11 @@ const App: React.FC = () => {
       </div>
 
       <div className="reveal">
-        <EventsSection />
+        <EventsSection webImages={settings?.webImages} />
       </div>
       
       <div id="location" className="reveal">
-        <LocationSection />
+        <LocationSection webImages={settings?.webImages} />
       </div>
 
       <div id="reservation" className="reveal">
@@ -171,7 +178,11 @@ const App: React.FC = () => {
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid md:grid-cols-3 gap-12 mb-16">
             <div className="col-span-1">
-              <h4 className="text-gold font-serif text-3xl mb-6 tracking-widest uppercase">Don García</h4>
+              {settings?.webImages?.logo ? (
+                <img src={settings.webImages.logo} alt="Don García" className="h-12 object-contain mb-6" referrerPolicy="no-referrer" />
+              ) : (
+                <h4 className="text-gold font-serif text-3xl mb-6 tracking-widest uppercase">Don García</h4>
+              )}
               <p className="max-w-md leading-relaxed text-base mb-8">
                 Cocina de excelencia en un entorno patrimonial único. La tradición de la parrilla y el río desde 1930.
               </p>
@@ -206,6 +217,14 @@ const App: React.FC = () => {
     </>
   );
 
+  if (!isSettingsReady) {
+    return (
+      <div className="min-h-[100dvh] bg-luxury-black flex items-center justify-center">
+        <div className="text-gold font-serif text-3xl animate-pulse tracking-widest uppercase">Don García</div>
+      </div>
+    );
+  }
+
   return (
     <div className={`min-h-screen bg-luxury-black text-stone-400 ${isSommelierPageOpen || isAdminOpen ? 'overflow-hidden' : ''}`}>
       {isAdminOpen ? (
@@ -216,7 +235,7 @@ const App: React.FC = () => {
         )
       ) : 
         isSommelierPageOpen ? <SommelierPage onClose={() => setIsSommelierPageOpen(false)} /> : 
-        (route === '/reservar' ? <ReservationPage /> : renderMainPage())
+        (route === '/reservar' ? <ReservationPage webImages={settings?.webImages} /> : renderMainPage())
       }
     </div>
   );

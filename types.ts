@@ -132,6 +132,8 @@ export interface WebImages {
   about?: string;
   menu?: string;
   reservation?: string;
+  events?: string;
+  location?: string;
   logo?: string;
   favicon?: string;
 }
