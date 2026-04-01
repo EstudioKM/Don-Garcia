@@ -2,8 +2,8 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { createReservation, getReservationsForDate } from '../services/reservationRepository';
 import { findOrCreateCustomer } from '../services/customerRepository';
-import { getRestaurantSettings } from '../services/settingsRepository';
-import { getLayout } from '../services/layoutRepository';
+import { getRestaurantSettings, subscribeToRestaurantSettings } from '../services/settingsRepository';
+import { getLayout, subscribeToLayout } from '../services/layoutRepository';
 import { sendReservationWebhook } from '../services/webhookService';
 import { Timestamp } from 'firebase/firestore';
 import { Reservation, RestaurantSettings, Layout } from '../types';
@@ -53,14 +53,18 @@ const ReservationForm: React.FC<ReservationFormProps> = ({ formId, onSubmittingC
   const dateInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    let unsubscribeSettings: () => void;
+    let unsubscribeLayout: () => void;
+
     const loadData = async () => {
       try {
-        const [settingsData, layoutData] = await Promise.all([getRestaurantSettings(), getLayout()]);
-        setSettings(settingsData);
-        setLayout(layoutData);
-        if (layoutData.environments.length > 0) {
-          setFormData(prev => ({ ...prev, environmentId: layoutData.environments[0].id }));
-        }
+        unsubscribeSettings = subscribeToRestaurantSettings(setSettings);
+        unsubscribeLayout = subscribeToLayout((layoutData) => {
+          setLayout(layoutData);
+          if (layoutData.environments.length > 0 && !formData.environmentId) {
+            setFormData(prev => ({ ...prev, environmentId: layoutData.environments[0].id }));
+          }
+        });
       } catch (e) {
         setError("No se pudo cargar la configuración de reservas. Por favor, intente más tarde.");
       } finally {
@@ -68,6 +72,11 @@ const ReservationForm: React.FC<ReservationFormProps> = ({ formId, onSubmittingC
       }
     };
     loadData();
+
+    return () => {
+      if (unsubscribeSettings) unsubscribeSettings();
+      if (unsubscribeLayout) unsubscribeLayout();
+    };
   }, []);
 
   const availableShifts = useMemo(() => {

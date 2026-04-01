@@ -17,10 +17,10 @@ import {
   Sun,
   Moon
 } from 'lucide-react';
-import { createReservation, getReservationsForDate } from '../services/reservationRepository';
+import { createReservation, getReservationsForDate, listenToReservationsForDate } from '../services/reservationRepository';
 import { findOrCreateCustomer } from '../services/customerRepository';
-import { getRestaurantSettings } from '../services/settingsRepository';
-import { getLayout } from '../services/layoutRepository';
+import { getRestaurantSettings, subscribeToRestaurantSettings } from '../services/settingsRepository';
+import { getLayout, subscribeToLayout } from '../services/layoutRepository';
 import { sendReservationWebhook } from '../services/webhookService';
 import { Timestamp } from 'firebase/firestore';
 import { Reservation, RestaurantSettings, Layout, Environment, WebImages } from '../types';
@@ -85,13 +85,14 @@ const Calendar: React.FC<{
       // Check special days first
       const specialDay = settings.specialDays?.find(sd => sd.date === dateStr);
       if (specialDay) {
-        return !specialDay.isOpen;
+        return !specialDay.isOpen || (!specialDay.shifts.mediodia.isActive && !specialDay.shifts.noche.isActive);
       }
 
       const dayIndex = date.getDay();
       const dayKeys = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
       const dayKey = dayKeys[dayIndex] as keyof RestaurantSettings['days'];
-      return !settings.days[dayKey].isOpen;
+      const daySettings = settings.days[dayKey];
+      return !daySettings.isOpen || (!daySettings.shifts.mediodia.isActive && !daySettings.shifts.noche.isActive);
     }
     
     return false;
@@ -184,7 +185,6 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange, w
 
   const [settings, setSettings] = useState<RestaurantSettings | null>(null);
   const [layout, setLayout] = useState<Layout | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reservationId, setReservationId] = useState<string | null>(null);
   const [selectedEnvForModal, setSelectedEnvForModal] = useState<Environment | null>(null);
@@ -193,45 +193,54 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange, w
   const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
 
   useEffect(() => {
+    let unsubscribe: () => void;
     if (formData.date) {
-      const fetchReservations = async () => {
-        setIsCheckingAvailability(true);
-        setDateReservations([]); // Clear previous reservations
-        try {
-          const dateObj = new Date(formData.date + 'T00:00:00-03:00');
-          const res = await getReservationsForDate(dateObj);
-          setDateReservations(res);
-        } catch (error) {
-          console.error("Error fetching reservations:", error);
-        } finally {
-          setIsCheckingAvailability(false);
-        }
-      };
-      fetchReservations();
+      setIsCheckingAvailability(true);
+      setDateReservations([]); // Clear previous reservations
+      const dateObj = new Date(formData.date + 'T00:00:00-03:00');
+      
+      unsubscribe = listenToReservationsForDate(dateObj, (res) => {
+        setDateReservations(res);
+        setIsCheckingAvailability(false);
+      });
     }
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, [formData.date]);
 
   // Load initial data
   useEffect(() => {
+    let unsubscribeSettings: () => void;
+    let unsubscribeLayout: () => void;
+
     const loadData = async () => {
       try {
-        const [settingsData, layoutData] = await Promise.all([getRestaurantSettings(), getLayout()]);
-        setSettings(settingsData);
-        setLayout(layoutData);
-        
         // Try to get phone from URL (WhatsApp integration)
         const params = new URLSearchParams(window.location.search);
         const phoneParam = params.get('phone') || params.get('tel');
         if (phoneParam) {
           setFormData(prev => ({ ...prev, phone: phoneParam }));
         }
+
+        unsubscribeSettings = subscribeToRestaurantSettings((settingsData) => {
+          setSettings(settingsData);
+        });
+
+        unsubscribeLayout = subscribeToLayout((layoutData) => {
+          setLayout(layoutData);
+        });
+
       } catch (e) {
         setError("No se pudo cargar la configuración. Por favor, intente más tarde.");
-      } finally {
-        setLoading(false);
       }
     };
     loadData();
+
+    return () => {
+      if (unsubscribeSettings) unsubscribeSettings();
+      if (unsubscribeLayout) unsubscribeLayout();
+    };
   }, []);
 
   const nextStep = () => {
@@ -413,8 +422,7 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange, w
       const reservationDate = new Date(formData.date + 'T00:00:00-03:00');
       
       // --- CAPACITY CHECK ---
-      const reservationsOnDate = await getReservationsForDate(reservationDate);
-      const confirmedReservations = reservationsOnDate.filter(r => r.status !== 'cancelada');
+      const confirmedReservations = dateReservations.filter(r => r.status !== 'cancelada');
       
       const dayIndex = reservationDate.getUTCDay();
       const dayKeys = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
@@ -543,15 +551,6 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange, w
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full space-y-4">
-        <div className="w-12 h-12 border-4 border-gold border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-stone-400 font-serif italic">Preparando la mesa...</p>
-      </div>
-    );
-  }
-
   const renderStep = () => {
     switch (step) {
       case 'welcome':
@@ -648,16 +647,49 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange, w
               <h2 className="text-3xl sm:text-4xl font-serif text-white leading-tight">¿Qué día nos visita?</h2>
             </div>
 
-            <div className="w-full max-w-lg mx-auto">
-              <Calendar 
-                selectedDate={formData.date}
-                settings={settings}
-                onSelect={(date) => {
-                  setFormData(prev => ({ ...prev, date, shift: '', time: '' }));
-                  setIsShiftModalOpen(true);
-                }}
-              />
-            </div>
+            {!settings ? (
+              <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+                <p className="text-stone-400 text-sm uppercase tracking-widest">Cargando calendario...</p>
+              </div>
+            ) : (
+              <div className="w-full max-w-lg mx-auto">
+                <Calendar 
+                  selectedDate={formData.date}
+                  settings={settings}
+                  onSelect={(date) => {
+                    setFormData(prev => ({ ...prev, date, shift: '', time: '' }));
+                    
+                    // Calculate available shifts for the selected date
+                    let shifts = [];
+                    const specialDay = settings?.specialDays?.find(sd => sd.date === date);
+                    if (specialDay) {
+                      if (specialDay.isOpen) {
+                        if (specialDay.shifts.mediodia.isActive) shifts.push('mediodia');
+                        if (specialDay.shifts.noche.isActive) shifts.push('noche');
+                      }
+                    } else if (settings) {
+                      const dateObj = new Date(date + 'T00:00:00-03:00');
+                      const dayIndex = dateObj.getUTCDay();
+                      const dayKeys = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+                      const dayKey = dayKeys[dayIndex] as keyof RestaurantSettings['days'];
+                      const daySettings = settings.days[dayKey];
+                      if (daySettings?.isOpen) {
+                        if (daySettings.shifts.mediodia.isActive) shifts.push('mediodia');
+                        if (daySettings.shifts.noche.isActive) shifts.push('noche');
+                      }
+                    }
+
+                    if (shifts.length === 1) {
+                      setFormData(prev => ({ ...prev, date, shift: shifts[0] as any, time: '' }));
+                      nextStep();
+                    } else {
+                      setIsShiftModalOpen(true);
+                    }
+                  }}
+                />
+              </div>
+            )}
 
             <AnimatePresence>
               {isShiftModalOpen && formData.date && (
@@ -781,10 +813,10 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange, w
               <h2 className="text-3xl sm:text-4xl font-serif text-white leading-tight">¿Dónde prefiere sentarse?</h2>
             </div>
 
-            {isCheckingAvailability ? (
+            {!layout || isCheckingAvailability ? (
               <div className="flex flex-col items-center justify-center py-12 space-y-4">
                 <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
-                <p className="text-stone-400 text-sm uppercase tracking-widest">Verificando disponibilidad...</p>
+                <p className="text-stone-400 text-sm uppercase tracking-widest">{!layout ? 'Cargando ambientes...' : 'Verificando disponibilidad...'}</p>
               </div>
             ) : environmentsWithAvailability.length === 0 ? (
               <div className="bg-stone-900/50 border border-red-500/30 rounded-[2rem] p-8 text-center space-y-6">
@@ -862,13 +894,6 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange, w
                         </div>
                       </div>
                       
-                      {env.description && (
-                        <div className="px-6 pb-6 mt-1">
-                          <p className="text-stone-500 text-xs line-clamp-2 font-light leading-relaxed">
-                            {env.description}
-                          </p>
-                        </div>
-                      )}
                     </button>
                     
                     <button 
@@ -889,27 +914,33 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange, w
             {/* Modal de Detalles de Ambiente */}
             <AnimatePresence>
               {selectedEnvForModal && (
-                <div 
-                  className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md"
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 z-[110] flex items-center justify-center p-4 sm:p-6 bg-black/95 backdrop-blur-xl"
                   onClick={() => setSelectedEnvForModal(null)}
                 >
                   <motion.div 
-                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                    className="bg-stone-900 border border-white/10 rounded-[2.5rem] overflow-hidden w-full max-w-lg shadow-2xl relative"
+                    initial={{ scale: 0.95, y: 20 }}
+                    animate={{ scale: 1, y: 0 }}
+                    exit={{ scale: 0.95, y: 20 }}
+                    className="bg-stone-900 border border-white/10 rounded-[2rem] overflow-hidden w-full max-w-4xl shadow-2xl relative flex flex-col sm:flex-row max-h-[90vh]"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <div className="relative aspect-video">
+                    {/* Image Section */}
+                    <div className="relative w-full sm:w-3/5 h-[40vh] sm:h-auto min-h-[300px]">
                       <img 
-                        src={selectedEnvForModal.image || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=800"} 
+                        src={selectedEnvForModal.image || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=100&w=1200"} 
                         alt={selectedEnvForModal.name}
-                        className="w-full h-full object-cover"
+                        className="absolute inset-0 w-full h-full object-cover"
                         referrerPolicy="no-referrer"
                       />
+                      <div className="absolute inset-0 bg-gradient-to-t from-stone-900 via-transparent to-transparent sm:bg-gradient-to-r sm:from-transparent sm:via-transparent sm:to-stone-900" />
+                      
                       <button 
                         onClick={() => setSelectedEnvForModal(null)}
-                        className="absolute top-4 right-4 p-2 bg-black/50 backdrop-blur-md rounded-full text-white hover:text-gold transition-colors z-10"
+                        className="absolute top-4 right-4 sm:hidden p-2 bg-black/50 backdrop-blur-md rounded-full text-white hover:text-gold transition-colors z-10"
                       >
                         <X className="w-5 h-5" />
                       </button>
@@ -923,7 +954,7 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange, w
                               const prevIndex = (currentIndex - 1 + environmentsWithAvailability.length) % environmentsWithAvailability.length;
                               setSelectedEnvForModal(environmentsWithAvailability[prevIndex]);
                             }}
-                            className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-black/50 backdrop-blur-md rounded-full text-white hover:text-gold transition-colors z-10"
+                            className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-black/50 backdrop-blur-md rounded-full text-white hover:text-gold hover:bg-black/80 transition-all z-10 border border-white/10"
                           >
                             <ChevronLeft className="w-6 h-6" />
                           </button>
@@ -935,36 +966,57 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange, w
                               const nextIndex = (currentIndex + 1) % environmentsWithAvailability.length;
                               setSelectedEnvForModal(environmentsWithAvailability[nextIndex]);
                             }}
-                            className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-black/50 backdrop-blur-md rounded-full text-white hover:text-gold transition-colors z-10"
+                            className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-black/50 backdrop-blur-md rounded-full text-white hover:text-gold hover:bg-black/80 transition-all z-10 border border-white/10"
                           >
                             <ChevronRight className="w-6 h-6" />
                           </button>
                         </>
                       )}
                     </div>
-                    <div className="p-8 space-y-6">
-                      <div className="flex justify-between items-end">
-                        <h3 className="text-3xl font-serif text-white">{selectedEnvForModal.name}</h3>
-                        <span className="text-gold text-[10px] uppercase tracking-widest font-bold mb-1">Capacidad: {selectedEnvForModal.maxCapacity}p</span>
-                      </div>
-                      <div className="h-px bg-gradient-to-r from-gold/50 to-transparent w-full" />
-                      <p className="text-stone-400 text-lg leading-relaxed font-light">
-                        {selectedEnvForModal.description || "Un espacio diseñado para brindar la máxima comodidad y una atmósfera inigualable durante su visita."}
-                      </p>
+
+                    {/* Content Section */}
+                    <div className="w-full sm:w-2/5 p-6 sm:p-8 flex flex-col justify-center bg-stone-900 relative">
                       <button 
-                        onClick={() => {
-                          setFormData(prev => ({ ...prev, environmentId: selectedEnvForModal.id }));
-                          setSelectedEnvForModal(null);
-                          nextStep();
-                        }}
-                        className="w-full bg-gold text-black py-4 rounded-2xl font-bold text-lg mt-4 hover:bg-white transition-colors"
-                        disabled={!selectedEnvForModal.isAvailable}
+                        onClick={() => setSelectedEnvForModal(null)}
+                        className="hidden sm:flex absolute top-6 right-6 p-2 bg-white/5 rounded-full text-stone-400 hover:text-white hover:bg-white/10 transition-colors z-10"
                       >
-                        {selectedEnvForModal.isAvailable ? 'Seleccionar este ambiente' : 'Ambiente no disponible'}
+                        <X className="w-5 h-5" />
                       </button>
+
+                      <div className="space-y-6 flex-1 flex flex-col justify-center">
+                        <div>
+                          <h3 className="text-4xl sm:text-5xl font-serif text-white mb-2">{selectedEnvForModal.name}</h3>
+                          <div className="flex items-center space-x-2 text-gold">
+                            <Users className="w-4 h-4" />
+                            <span className="text-xs uppercase tracking-widest font-bold">Capacidad: {selectedEnvForModal.maxCapacity}p</span>
+                          </div>
+                        </div>
+                        
+                        <div className="h-px bg-gradient-to-r from-gold/50 to-transparent w-full" />
+                        
+                        <div className="pt-4">
+                          <button 
+                            onClick={() => {
+                              setFormData(prev => ({ ...prev, environmentId: selectedEnvForModal.id }));
+                              setSelectedEnvForModal(null);
+                              nextStep();
+                            }}
+                            className="w-full bg-gold text-black py-5 rounded-2xl font-bold text-xl hover:bg-white hover:scale-[1.02] active:scale-95 transition-all shadow-[0_0_30px_rgba(212,175,55,0.3)] disabled:opacity-50 disabled:hover:scale-100 disabled:shadow-none flex items-center justify-center space-x-2"
+                            disabled={!selectedEnvForModal.isAvailable}
+                          >
+                            <span>{selectedEnvForModal.isAvailable ? 'Reservar Aquí' : 'No Disponible'}</span>
+                            {selectedEnvForModal.isAvailable && <ChevronRight className="w-6 h-6" />}
+                          </button>
+                          {!selectedEnvForModal.isAvailable && selectedEnvForModal.availabilityReason && (
+                            <p className="text-red-400 text-sm text-center mt-4 font-medium">
+                              {selectedEnvForModal.availabilityReason}
+                            </p>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </motion.div>
-                </div>
+                </motion.div>
               )}
             </AnimatePresence>
           </motion.div>

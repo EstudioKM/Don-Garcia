@@ -29,7 +29,7 @@ const AdminImages: React.FC<AdminImagesProps> = ({ settings, setSettings }) => {
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
-        const maxDim = 1200; // Slightly larger for hero images
+        const maxDim = 1920; // Larger for hero images
 
         if (width > height) {
           if (width > maxDim) {
@@ -48,7 +48,7 @@ const AdminImages: React.FC<AdminImagesProps> = ({ settings, setSettings }) => {
         const ctx = canvas.getContext('2d');
         if (ctx) {
           ctx.drawImage(img, 0, 0, width, height);
-          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.85);
           handleImageChange(field, compressedBase64);
         }
       };

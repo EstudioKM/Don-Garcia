@@ -1,5 +1,5 @@
 import { db } from "../firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
 import { Layout } from "../types";
 
 const COLLECTION_NAME = "configuration";
@@ -53,6 +53,25 @@ export const getLayout = async (): Promise<Layout> => {
     }
     return DEFAULT_LAYOUT;
   }
+};
+
+export const subscribeToLayout = (callback: (layout: Layout) => void) => {
+  const docRef = doc(db, COLLECTION_NAME, DOC_ID);
+  return onSnapshot(docRef, (docSnap) => {
+    if (docSnap.exists()) {
+      callback(docSnap.data() as Layout);
+    } else {
+      callback(DEFAULT_LAYOUT);
+    }
+  }, (error) => {
+    const errorMessage = error instanceof Error ? error.message : (error as any)?.message || String(error);
+    if (errorMessage.includes('client is offline')) {
+      console.warn("Firebase client is offline. Using default layout.");
+    } else {
+      console.error("Error subscribing to layout:", error);
+    }
+    callback(DEFAULT_LAYOUT);
+  });
 };
 
 export const saveLayout = async (layoutData: Layout): Promise<boolean> => {

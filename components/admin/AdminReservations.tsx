@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { listenToReservationsForDate, updateReservation, deleteReservation } from '../../services/reservationRepository';
-import { getLayout } from '../../services/layoutRepository';
+import { getLayout, subscribeToLayout } from '../../services/layoutRepository';
 import { Reservation, Layout, RestaurantSettings } from '../../types';
 import ReservationModal from './ReservationModal';
-import { getRestaurantSettings } from '../../services/settingsRepository';
+import { getRestaurantSettings, subscribeToRestaurantSettings } from '../../services/settingsRepository';
 import { getArgentinaTime } from '../../utils/dateUtils';
 import { ChevronLeft, ChevronRight, Calendar, Plus, Printer, Users, Edit2, Trash2, AlertCircle, Info } from 'lucide-react';
 
@@ -46,15 +46,39 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
   const [mobileView, setMobileView] = useState<'timeline' | 'salon'>('timeline');
 
   useEffect(() => {
-    setLoading(true);
-    const unsubscribe = listenToReservationsForDate(selectedDate, setReservations);
-    
-    const fetchInitialData = async () => {
-        const [layoutData, settingsData] = await Promise.all([ getLayout(), getRestaurantSettings() ]);
-        setLayout(layoutData); setSettings(settingsData); setLoading(false);
+    let unsubscribeLayout: () => void;
+    let unsubscribeSettings: () => void;
+
+    let layoutLoaded = false;
+    let settingsLoaded = false;
+
+    const checkLoaded = () => {
+      if (layoutLoaded && settingsLoaded) {
+        setLoading(false);
+      }
     };
-    fetchInitialData();
-    return () => unsubscribe();
+
+    unsubscribeLayout = subscribeToLayout((layoutData) => {
+      setLayout(layoutData);
+      layoutLoaded = true;
+      checkLoaded();
+    });
+
+    unsubscribeSettings = subscribeToRestaurantSettings((settingsData) => {
+      setSettings(settingsData);
+      settingsLoaded = true;
+      checkLoaded();
+    });
+
+    return () => {
+      if (unsubscribeLayout) unsubscribeLayout();
+      if (unsubscribeSettings) unsubscribeSettings();
+    };
+  }, []);
+
+  useEffect(() => {
+    const unsubscribeReservations = listenToReservationsForDate(selectedDate, setReservations);
+    return () => unsubscribeReservations();
   }, [selectedDate]);
 
   useEffect(() => {
