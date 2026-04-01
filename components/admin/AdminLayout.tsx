@@ -40,7 +40,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ layout, setLayout }) => {
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
-        const maxDim = 300;
+        const maxDim = 1200;
 
         if (width > height) {
           if (width > maxDim) {
@@ -59,7 +59,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ layout, setLayout }) => {
         const ctx = canvas.getContext('2d');
         if (ctx) {
           ctx.drawImage(img, 0, 0, width, height);
-          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.4);
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
           handleEnvironmentChange(envIndex, 'image', compressedBase64);
         }
       };

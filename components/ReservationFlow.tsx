@@ -889,12 +889,16 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange, w
             {/* Modal de Detalles de Ambiente */}
             <AnimatePresence>
               {selectedEnvForModal && (
-                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+                <div 
+                  className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md"
+                  onClick={() => setSelectedEnvForModal(null)}
+                >
                   <motion.div 
                     initial={{ opacity: 0, scale: 0.95, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                    className="bg-stone-900 border border-white/10 rounded-[2.5rem] overflow-hidden w-full max-w-lg shadow-2xl"
+                    className="bg-stone-900 border border-white/10 rounded-[2.5rem] overflow-hidden w-full max-w-lg shadow-2xl relative"
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <div className="relative aspect-video">
                       <img 
@@ -905,10 +909,38 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange, w
                       />
                       <button 
                         onClick={() => setSelectedEnvForModal(null)}
-                        className="absolute top-4 right-4 p-2 bg-black/50 backdrop-blur-md rounded-full text-white hover:text-gold transition-colors"
+                        className="absolute top-4 right-4 p-2 bg-black/50 backdrop-blur-md rounded-full text-white hover:text-gold transition-colors z-10"
                       >
                         <X className="w-5 h-5" />
                       </button>
+
+                      {environmentsWithAvailability.length > 1 && (
+                        <>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const currentIndex = environmentsWithAvailability.findIndex(env => env.id === selectedEnvForModal.id);
+                              const prevIndex = (currentIndex - 1 + environmentsWithAvailability.length) % environmentsWithAvailability.length;
+                              setSelectedEnvForModal(environmentsWithAvailability[prevIndex]);
+                            }}
+                            className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-black/50 backdrop-blur-md rounded-full text-white hover:text-gold transition-colors z-10"
+                          >
+                            <ChevronLeft className="w-6 h-6" />
+                          </button>
+
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const currentIndex = environmentsWithAvailability.findIndex(env => env.id === selectedEnvForModal.id);
+                              const nextIndex = (currentIndex + 1) % environmentsWithAvailability.length;
+                              setSelectedEnvForModal(environmentsWithAvailability[nextIndex]);
+                            }}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-black/50 backdrop-blur-md rounded-full text-white hover:text-gold transition-colors z-10"
+                          >
+                            <ChevronRight className="w-6 h-6" />
+                          </button>
+                        </>
+                      )}
                     </div>
                     <div className="p-8 space-y-6">
                       <div className="flex justify-between items-end">
@@ -926,8 +958,9 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange, w
                           nextStep();
                         }}
                         className="w-full bg-gold text-black py-4 rounded-2xl font-bold text-lg mt-4 hover:bg-white transition-colors"
+                        disabled={!selectedEnvForModal.isAvailable}
                       >
-                        Seleccionar este ambiente
+                        {selectedEnvForModal.isAvailable ? 'Seleccionar este ambiente' : 'Ambiente no disponible'}
                       </button>
                     </div>
                   </motion.div>
