@@ -287,9 +287,6 @@ const ReservationForm: React.FC<ReservationFormProps> = ({ formId, onSubmittingC
       label: 'Seleccionar otro día',
       action: () => {
         dateInputRef.current?.focus();
-        if (typeof dateInputRef.current?.showPicker === 'function') {
-            dateInputRef.current.showPicker();
-        }
       }
     });
 
@@ -447,7 +444,7 @@ const ReservationForm: React.FC<ReservationFormProps> = ({ formId, onSubmittingC
           <div><label className="text-xs uppercase tracking-widest text-gold font-black block mb-2">Teléfono</label><input required type="tel" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} placeholder="Ej: 543424066887" className="w-full bg-stone-900 border-2 border-stone-800 py-3 px-4 focus:border-gold outline-none"/></div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div><label className="text-xs uppercase tracking-widest text-gold font-black block mb-2">Día</label><input ref={dateInputRef} required type="date" value={formData.date} min={getArgentinaTime().toISOString().split("T")[0]} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full bg-stone-900 border-2 border-stone-800 py-3 px-4 focus:border-gold outline-none appearance-none"/></div>
+          <div><label className="text-xs uppercase tracking-widest text-gold font-black block mb-2">Día</label><input ref={dateInputRef} required type="date" value={formData.date} min={getArgentinaTime().toISOString().split("T")[0]} onChange={e => setFormData({...formData, date: e.target.value})} onClick={(e) => { try { e.currentTarget.showPicker() } catch(err) {} }} className="w-full bg-stone-900 border-2 border-stone-800 py-3 px-4 focus:border-gold outline-none cursor-pointer"/></div>
           <div><label className="text-xs uppercase tracking-widest text-gold font-black block mb-2">Turno</label><select required value={formData.shift} onChange={e => setFormData({...formData, shift: e.target.value})} disabled={!formData.date || availableShifts.length === 0} className="w-full bg-stone-900 border-2 border-stone-800 py-3 px-4 focus:border-gold outline-none appearance-none"><option value="">{availableShifts.length > 0 ? 'Seleccione turno' : 'Cerrado'}</option>{availableShifts.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}</select></div>
           <div><label className="text-xs uppercase tracking-widest text-gold font-black block mb-2">Hora</label><select required value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} disabled={!formData.shift} className="w-full bg-stone-900 border-2 border-stone-800 py-3 px-4 focus:border-gold outline-none appearance-none"><option value="">Seleccione hora</option>{availableTimes.map(t => <option key={t} value={t}>{t} hs</option>)}</select></div>
         </div>

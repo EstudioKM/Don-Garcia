@@ -257,7 +257,7 @@ const AdminSettings: React.FC = () => {
         compressedLayout.environments = await Promise.all(
           compressedLayout.environments.map(async (env) => {
             if (env.image) {
-              return { ...env, image: await compressBase64Image(env.image, 600, 0.5) };
+              return { ...env, image: await compressBase64Image(env.image, 300, 0.4) };
             }
             return env;
           })
@@ -364,7 +364,7 @@ const AdminSettings: React.FC = () => {
                             type="date" 
                             value={day.date}
                             onChange={e => handleUpdateSpecialDay(day.id, { ...day, date: e.target.value })}
-                            className="w-full bg-black/30 border border-stone-800 rounded-lg px-4 py-2 text-white outline-none focus:border-gold"
+                            className="w-full bg-black/30 border border-stone-800 rounded-lg px-4 py-2 text-white outline-none focus:border-gold cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer relative"
                           />
                         </div>
                       </div>

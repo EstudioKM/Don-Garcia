@@ -171,11 +171,7 @@ const App: React.FC = () => {
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid md:grid-cols-3 gap-12 mb-16">
             <div className="col-span-1">
-              {settings?.webImages?.logo ? (
-                <img src={settings.webImages.logo} alt="Don García" className="h-16 w-auto object-contain mb-6" referrerPolicy="no-referrer" />
-              ) : (
-                <h4 className="text-gold font-serif text-3xl mb-6 tracking-widest uppercase">Don García</h4>
-              )}
+              <h4 className="text-gold font-serif text-3xl mb-6 tracking-widest uppercase">Don García</h4>
               <p className="max-w-md leading-relaxed text-base mb-8">
                 Cocina de excelencia en un entorno patrimonial único. La tradición de la parrilla y el río desde 1930.
               </p>

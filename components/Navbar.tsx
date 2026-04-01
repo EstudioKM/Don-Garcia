@@ -65,11 +65,7 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenSommelier, onOpenAdmin, logo }) =
       <nav className={`fixed w-full z-50 transition-all duration-300 ${isScrolled || isMenuOpen ? 'bg-luxury-black py-4 shadow-2xl' : 'bg-transparent py-6'}`}>
         <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
           <div onClick={handleLogoClick} className="flex items-center cursor-pointer select-none">
-            {logo ? (
-              <img src={logo} alt="Don García" className="h-10 md:h-12 w-auto object-contain" referrerPolicy="no-referrer" />
-            ) : (
-              <span className="text-xl font-serif text-gold tracking-tighter font-bold uppercase">Don García</span>
-            )}
+            <span className="text-xl font-serif text-gold tracking-tighter font-bold uppercase">Don García</span>
           </div>
           
           <div className="hidden lg:flex space-x-8 items-center">

@@ -282,9 +282,9 @@ const AdminAnalytics: React.FC = () => {
             <div className="w-px h-6 bg-stone-700 hidden md:block"></div>
             <div className="flex items-center gap-2">
                 <label className={labelClasses}>Desde:</label>
-                <input type="date" className={inputClasses} value={dateRange.start} onChange={e => { setDateRange(prev => ({ ...prev, start: e.target.value })); setActiveFilter(null); }} />
+                <input type="date" className={`${inputClasses} cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer relative`} value={dateRange.start} onChange={e => { setDateRange(prev => ({ ...prev, start: e.target.value })); setActiveFilter(null); }} />
                 <label className={labelClasses}>Hasta:</label>
-                <input type="date" className={inputClasses} value={dateRange.end} onChange={e => { setDateRange(prev => ({ ...prev, end: e.target.value })); setActiveFilter(null); }} />
+                <input type="date" className={`${inputClasses} cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer relative`} value={dateRange.end} onChange={e => { setDateRange(prev => ({ ...prev, end: e.target.value })); setActiveFilter(null); }} />
             </div>
         </div>
       </div>

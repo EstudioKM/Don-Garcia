@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Layout, Environment, Table } from '../../types';
 import { produce } from 'immer';
-import { Plus, Trash2, Calculator, X, Link, Image as ImageIcon, Upload } from 'lucide-react';
+import { Plus, Trash2, Calculator, X, Link, Image as ImageIcon, Upload, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface AdminLayoutProps {
   layout: Layout | null;
@@ -11,6 +11,15 @@ interface AdminLayoutProps {
 const AdminLayout: React.FC<AdminLayoutProps> = ({ layout, setLayout }) => {
   const [envToDelete, setEnvToDelete] = useState<number | null>(null);
   const [editingTableJoin, setEditingTableJoin] = useState<{ envIndex: number, tableIndex: number } | null>(null);
+
+  const [expandedEnvs, setExpandedEnvs] = useState<Record<number, boolean>>({});
+
+  const toggleEnvExpand = (envIndex: number) => {
+    setExpandedEnvs(prev => ({
+      ...prev,
+      [envIndex]: !prev[envIndex]
+    }));
+  };
 
   const handleEnvironmentChange = (envIndex: number, field: 'name' | 'image' | 'description', value: string | number) => {
     if (!layout) return;
@@ -31,7 +40,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ layout, setLayout }) => {
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
-        const maxDim = 800;
+        const maxDim = 300;
 
         if (width > height) {
           if (width > maxDim) {
@@ -50,7 +59,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ layout, setLayout }) => {
         const ctx = canvas.getContext('2d');
         if (ctx) {
           ctx.drawImage(img, 0, 0, width, height);
-          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6);
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.4);
           handleEnvironmentChange(envIndex, 'image', compressedBase64);
         }
       };
@@ -249,11 +258,21 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ layout, setLayout }) => {
       <div className="grid grid-cols-1 gap-6">
         {layout?.environments.map((env, envIndex) => {
           const tablesSum = env.tables.reduce((sum, t) => sum + t.capacity, 0);
+          const isExpanded = expandedEnvs[envIndex];
           
           return (
             <div key={env.id} className="group bg-stone-900/40 border border-stone-800/60 rounded-xl overflow-hidden transition-all hover:border-stone-700/80">
-              <div className="p-4 bg-black/20 border-b border-stone-800/50 flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center gap-3 flex-grow min-w-[200px]">
+              <div 
+                className="p-4 bg-black/20 border-b border-stone-800/50 flex flex-wrap items-center justify-between gap-4 cursor-pointer"
+                onClick={() => toggleEnvExpand(envIndex)}
+              >
+                <div className="flex items-center gap-3 flex-grow min-w-[200px]" onClick={e => e.stopPropagation()}>
+                  <button 
+                    onClick={() => toggleEnvExpand(envIndex)}
+                    className="p-1 text-stone-500 hover:text-gold transition-colors"
+                  >
+                    {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                  </button>
                   <input 
                     value={env.name} 
                     onChange={e => handleEnvironmentChange(envIndex, 'name', e.target.value)} 
@@ -262,51 +281,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ layout, setLayout }) => {
                   />
                 </div>
 
-                <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                  <div className="space-y-1">
-                    <label className="text-[9px] uppercase tracking-widest text-stone-500 font-bold">Imagen del Ambiente</label>
-                    <div className="flex gap-3 items-start">
-                      <div className="relative w-16 h-16 rounded-lg bg-stone-950 border border-stone-800 overflow-hidden flex-shrink-0 group/img">
-                        {env.image ? (
-                          <img src={env.image} alt={env.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-stone-700">
-                            <ImageIcon size={20} />
-                          </div>
-                        )}
-                        <label className="absolute inset-0 bg-black/60 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
-                          <Upload size={16} className="text-white" />
-                          <input 
-                            type="file" 
-                            className="hidden" 
-                            accept="image/*"
-                            onChange={e => handleImageUpload(envIndex, e)}
-                          />
-                        </label>
-                      </div>
-                      <div className="flex-grow">
-                        <input 
-                          value={env.image || ''} 
-                          onChange={e => handleEnvironmentChange(envIndex, 'image', e.target.value)} 
-                          className="w-full bg-stone-950 text-stone-300 py-1.5 px-3 rounded-lg border border-stone-800 focus:border-gold outline-none text-xs"
-                          placeholder="URL de la imagen..."
-                        />
-                        <p className="text-[8px] text-stone-600 mt-1 uppercase tracking-tighter">Pega una URL o haz clic en el cuadro para subir</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[9px] uppercase tracking-widest text-stone-500 font-bold">Descripción</label>
-                    <input 
-                      value={env.description || ''} 
-                      onChange={e => handleEnvironmentChange(envIndex, 'description', e.target.value)} 
-                      className="w-full bg-stone-950 text-stone-300 py-1.5 px-3 rounded-lg border border-stone-800 focus:border-gold outline-none text-xs"
-                      placeholder="Breve descripción del ambiente..."
-                    />
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-6 mt-4 md:mt-0">
+                <div className="flex items-center gap-6 mt-4 md:mt-0" onClick={e => e.stopPropagation()}>
                   <div className="flex items-center gap-3">
                     <div className="flex flex-col items-end">
                       <label className="text-[9px] uppercase tracking-widest text-stone-500 font-bold">Capacidad Máx.</label>
@@ -326,53 +301,103 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ layout, setLayout }) => {
                 </div>
               </div>
 
-              <div className="p-5">
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">
-                  {env.tables.map((table, tableIndex) => (
-                    <div key={table.id} className="group/table bg-stone-950/40 p-2 rounded-lg flex items-center gap-2 border border-stone-800/50 hover:border-stone-700 transition-colors min-w-0">
-                      <input 
-                        value={table.name} 
-                        onChange={e => handleTableChange(envIndex, tableIndex, 'name', e.target.value)} 
-                        className="flex-1 bg-transparent text-stone-300 text-xs py-1 px-2 rounded border border-transparent focus:border-stone-700 focus:bg-stone-900 outline-none transition-all min-w-0"
-                        placeholder="Mesa..."
-                      />
-                      <div className="flex-shrink-0 flex items-center gap-1 bg-stone-900 rounded-md border border-stone-800 px-1.5 py-0.5">
-                        <span className="text-[8px] text-stone-600 font-bold">CAP.</span>
+              {isExpanded && (
+                <div className="animate-fadeIn">
+                  <div className="p-4 bg-black/10 border-b border-stone-800/50">
+                    <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-[9px] uppercase tracking-widest text-stone-500 font-bold">Imagen del Ambiente</label>
+                        <div className="flex gap-3 items-start">
+                          <div className="relative w-16 h-16 rounded-lg bg-stone-950 border border-stone-800 overflow-hidden flex-shrink-0 group/img">
+                            {env.image ? (
+                              <img src={env.image} alt={env.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-stone-700">
+                                <ImageIcon size={20} />
+                              </div>
+                            )}
+                            <label className="absolute inset-0 bg-black/60 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
+                              <Upload size={16} className="text-white" />
+                              <input 
+                                type="file" 
+                                className="hidden" 
+                                accept="image/*"
+                                onChange={e => handleImageUpload(envIndex, e)}
+                              />
+                            </label>
+                          </div>
+                          <div className="flex-grow">
+                            <input 
+                              value={env.image || ''} 
+                              onChange={e => handleEnvironmentChange(envIndex, 'image', e.target.value)} 
+                              className="w-full bg-stone-950 text-stone-300 py-1.5 px-3 rounded-lg border border-stone-800 focus:border-gold outline-none text-xs"
+                              placeholder="URL de la imagen..."
+                            />
+                            <p className="text-[8px] text-stone-600 mt-1 uppercase tracking-tighter">Pega una URL o haz clic en el cuadro para subir</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] uppercase tracking-widest text-stone-500 font-bold">Descripción</label>
                         <input 
-                          type="number" 
-                          value={table.capacity} 
-                          onChange={e => handleTableChange(envIndex, tableIndex, 'capacity', parseInt(e.target.value) || 0)} 
-                          className="w-7 bg-transparent text-white outline-none text-center text-xs font-bold"
+                          value={env.description || ''} 
+                          onChange={e => handleEnvironmentChange(envIndex, 'description', e.target.value)} 
+                          className="w-full bg-stone-950 text-stone-300 py-1.5 px-3 rounded-lg border border-stone-800 focus:border-gold outline-none text-xs"
+                          placeholder="Breve descripción del ambiente..."
                         />
                       </div>
-                      <div className="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover/table:opacity-100 transition-opacity">
-                        <button 
-                          onClick={() => setEditingTableJoin({ envIndex, tableIndex })}
-                          className={`p-1 rounded transition-all ${table.joinableWith?.length ? 'text-gold hover:bg-gold/10' : 'text-stone-500 hover:text-gold hover:bg-gold/10'}`}
-                          title="Unir con otras mesas"
-                        >
-                          <Link size={14} />
-                        </button>
-                        <button 
-                          onClick={() => deleteTable(envIndex, tableIndex)} 
-                          className="p-1 text-stone-700 hover:text-red-500 hover:bg-red-500/10 rounded transition-all"
-                          title="Eliminar Mesa"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
                     </div>
-                  ))}
-                  
-                  <button 
-                    onClick={() => addTable(envIndex)} 
-                    className="flex items-center justify-center gap-2 p-2 border border-dashed border-stone-800 text-stone-600 rounded-lg hover:border-gold/50 hover:text-gold hover:bg-gold/5 transition-all text-[10px] uppercase tracking-widest font-bold min-h-[42px]"
-                  >
-                    <Plus size={14} />
-                    Agregar Mesa
-                  </button>
+                  </div>
+
+                  <div className="p-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">
+                      {env.tables.map((table, tableIndex) => (
+                        <div key={table.id} className="group/table bg-stone-950/40 p-2 rounded-lg flex items-center gap-2 border border-stone-800/50 hover:border-stone-700 transition-colors min-w-0">
+                          <input 
+                            value={table.name} 
+                            onChange={e => handleTableChange(envIndex, tableIndex, 'name', e.target.value)} 
+                            className="flex-1 bg-transparent text-stone-300 text-xs py-1 px-2 rounded border border-transparent focus:border-stone-700 focus:bg-stone-900 outline-none transition-all min-w-0"
+                            placeholder="Mesa..."
+                          />
+                          <div className="flex-shrink-0 flex items-center gap-1 bg-stone-900 rounded-md border border-stone-800 px-1.5 py-0.5">
+                            <span className="text-[8px] text-stone-600 font-bold">CAP.</span>
+                            <input 
+                              type="number" 
+                              value={table.capacity} 
+                              onChange={e => handleTableChange(envIndex, tableIndex, 'capacity', parseInt(e.target.value) || 0)} 
+                              className="w-7 bg-transparent text-white outline-none text-center text-xs font-bold"
+                            />
+                          </div>
+                          <div className="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover/table:opacity-100 transition-opacity">
+                            <button 
+                              onClick={() => setEditingTableJoin({ envIndex, tableIndex })}
+                              className={`p-1 rounded transition-all ${table.joinableWith?.length ? 'text-gold hover:bg-gold/10' : 'text-stone-500 hover:text-gold hover:bg-gold/10'}`}
+                              title="Unir con otras mesas"
+                            >
+                              <Link size={14} />
+                            </button>
+                            <button 
+                              onClick={() => deleteTable(envIndex, tableIndex)} 
+                              className="p-1 text-stone-700 hover:text-red-500 hover:bg-red-500/10 rounded transition-all"
+                              title="Eliminar Mesa"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      <button 
+                        onClick={() => addTable(envIndex)} 
+                        className="flex items-center justify-center gap-2 p-2 border border-dashed border-stone-800 text-stone-600 rounded-lg hover:border-gold/50 hover:text-gold hover:bg-gold/5 transition-all text-[10px] uppercase tracking-widest font-bold min-h-[42px]"
+                      >
+                        <Plus size={14} />
+                        Agregar Mesa
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           );
         })}

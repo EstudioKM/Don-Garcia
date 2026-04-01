@@ -792,13 +792,21 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
             
             {/* Left: Selected Date (Large) */}
             <div className="flex-1 w-full lg:w-auto flex items-center justify-between lg:justify-start gap-4">
-                <div className="flex items-baseline gap-3">
-                    <span className="text-4xl md:text-5xl font-serif text-gold leading-none tracking-tighter">{selectedDate.getDate()}</span>
+                <label className="flex items-baseline gap-3 cursor-pointer group relative">
+                    <input 
+                      type="date" 
+                      min={minDate} 
+                      value={selectedDate.toISOString().split('T')[0]} 
+                      onChange={handleCalendarSelect} 
+                      onClick={(e) => { try { e.currentTarget.showPicker() } catch(err) {} }}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    />
+                    <span className="text-4xl md:text-5xl font-serif text-gold leading-none tracking-tighter group-hover:text-yellow-500 transition-colors">{selectedDate.getDate()}</span>
                     <div className="flex flex-col">
-                        <span className="text-xs md:text-sm text-white font-bold uppercase tracking-[0.1em]">{selectedDate.toLocaleDateString('es-AR', { month: 'long' })}</span>
-                        <span className="text-[9px] md:text-[10px] text-stone-500 uppercase tracking-[0.1em] font-medium">{selectedDate.toLocaleDateString('es-AR', { weekday: 'long' })}</span>
+                        <span className="text-xs md:text-sm text-white font-bold uppercase tracking-[0.1em] group-hover:text-stone-200 transition-colors">{selectedDate.toLocaleDateString('es-AR', { month: 'long' })}</span>
+                        <span className="text-[9px] md:text-[10px] text-stone-500 uppercase tracking-[0.1em] font-medium group-hover:text-stone-400 transition-colors">{selectedDate.toLocaleDateString('es-AR', { weekday: 'long' })}</span>
                     </div>
-                </div>
+                </label>
                 
                 {/* Mobile Create Button (Visible only on small screens) */}
                 <button 
