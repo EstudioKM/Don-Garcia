@@ -1291,18 +1291,7 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange, w
 
   return (
     <div className="flex flex-col h-full relative">
-      {/* Botón Volver (solo si no es el primer paso o éxito) */}
-      {step !== 'welcome' && step !== 'success' && step !== 'confirming' && (
-        <button 
-          onClick={prevStep}
-          className="absolute -top-10 left-0 flex items-center space-x-2 text-stone-500 hover:text-gold transition-colors group z-50"
-        >
-          <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-          <span className="text-[10px] uppercase tracking-widest font-bold">Volver</span>
-        </button>
-      )}
-
-      <div className="flex-grow">
+      <div className={`flex-grow ${showSummary ? 'pb-32' : ''}`}>
         <AnimatePresence mode="wait">
           <motion.div
             key={step}
@@ -1320,32 +1309,44 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange, w
         <motion.div 
           initial={{ y: 100 }}
           animate={{ y: 0 }}
-          className="fixed bottom-0 left-0 right-0 bg-black/90 backdrop-blur-2xl border-t border-white/5 p-4 pb-8 z-50"
+          className="fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-3xl border-t border-white/10 p-5 pb-10 z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]"
         >
           <div className="max-w-md mx-auto flex items-center justify-between gap-4">
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-4">
               <button 
                 onClick={prevStep}
-                className="w-9 h-9 flex-shrink-0 rounded-full bg-white/5 flex items-center justify-center text-stone-400 hover:text-white transition-colors border border-white/5 active:scale-90"
+                className="w-12 h-12 flex-shrink-0 rounded-full bg-white/10 flex items-center justify-center text-stone-300 hover:text-white hover:bg-white/20 transition-all border border-white/10 active:scale-90 shadow-lg"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="w-6 h-6" />
               </button>
               <div className="flex flex-col min-w-0">
-                <span className="text-[7px] uppercase tracking-[0.4em] text-gold font-bold mb-0.5">Resumen</span>
-                <div className="flex items-center gap-1 text-white text-[10px] font-bold truncate">
-                  {formData.guests > 0 && <span>{formData.guests}p</span>}
-                  {formData.date && <span>• {new Date(formData.date + 'T00:00:00-03:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}</span>}
-                  {formData.time && <span>• {formData.time}</span>}
+                <span className="text-[9px] uppercase tracking-[0.3em] text-gold font-bold mb-1">Resumen de Reserva</span>
+                <div className="flex flex-wrap items-center gap-1.5 text-white text-xs font-bold">
+                  {formData.guests > 0 && (
+                    <button onClick={() => setStep('guests')} className="bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded-md transition-colors">
+                      {formData.guests} pers.
+                    </button>
+                  )}
+                  {formData.date && (
+                    <button onClick={() => setStep('date')} className="bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded-md transition-colors">
+                      {new Date(formData.date + 'T00:00:00-03:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
+                    </button>
+                  )}
+                  {formData.time && (
+                    <button onClick={() => setStep('time')} className="bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded-md transition-colors">
+                      {formData.time}
+                    </button>
+                  )}
                   {formData.environmentId && (
-                    <span className="text-gold truncate">
-                      • {layout?.environments.find(e => e.id === formData.environmentId)?.name}
-                    </span>
+                    <button onClick={() => setStep('sector')} className="bg-gold/20 hover:bg-gold/30 text-gold px-2 py-0.5 rounded-md truncate max-w-[120px] transition-colors">
+                      {layout?.environments.find(e => e.id === formData.environmentId)?.name}
+                    </button>
                   )}
                 </div>
               </div>
             </div>
             
-            <div className="flex items-center space-x-1 flex-shrink-0">
+            <div className="flex items-center space-x-1.5 flex-shrink-0">
               {['guests', 'date', 'time', 'sector', 'occasion', 'preferences', 'notes', 'name', 'phone'].map((s, i) => {
                 const steps: Step[] = ['guests', 'date', 'time', 'sector', 'occasion', 'preferences', 'notes', 'name', 'phone'];
                 const currentIndex = steps.indexOf(step as Step);
@@ -1355,8 +1356,8 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange, w
                     key={s} 
                     className={`transition-all duration-500 rounded-full ${
                       isActive 
-                      ? 'w-3 h-1 bg-gold' 
-                      : 'w-1 h-1 bg-stone-800'
+                      ? 'w-4 h-1.5 bg-gold shadow-[0_0_8px_rgba(212,175,55,0.5)]' 
+                      : 'w-1.5 h-1.5 bg-stone-800'
                     }`}
                   />
                 );

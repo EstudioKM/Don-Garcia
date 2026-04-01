@@ -464,7 +464,22 @@ const ReservationModal: React.FC<ReservationModalProps> = ({ isOpen, onClose, re
                     <div><label className={labelClasses}>Email</label><input type="email" value={formData.email || ''} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="Opcional" className={inputClasses}/></div>
                 </div>
                 <div className="grid grid-cols-3 gap-x-4">
-                    <div><label className={labelClasses}>Día</label><input required type="date" value={formData.dateString || ''} onChange={e => handleDateChange(e.target.value)} onClick={(e) => { try { e.currentTarget.showPicker() } catch(err) {} }} className={`${inputClasses} cursor-pointer`}/></div>
+                    <div>
+                      <label className={labelClasses}>Día</label>
+                      <div className="relative group">
+                        <input 
+                          required 
+                          type="date" 
+                          value={formData.dateString || ''} 
+                          onChange={e => handleDateChange(e.target.value)} 
+                          onClick={(e) => { try { e.currentTarget.showPicker() } catch(err) {} }} 
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                        />
+                        <div className="w-full bg-stone-950 border-2 border-stone-800 py-2 px-3 group-focus-within:border-gold outline-none text-white text-sm flex items-center min-h-[38px]">
+                          {formData.dateString || 'Seleccionar'}
+                        </div>
+                      </div>
+                    </div>
                     <div><label className={labelClasses}>Turno</label><select required value={formData.shift || ''} onChange={e => setFormData({...formData, shift: e.target.value})} disabled={!formData.dateString || availableShifts.length === 0} className={`${inputClasses} appearance-none`}><option value="">{availableShifts.length > 0 ? 'Seleccione' : 'Cerrado'}</option>{availableShifts.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}</select></div>
                     <div><label className={labelClasses}>Hora</label><select required value={formData.time || ''} onChange={e => setFormData({...formData, time: e.target.value})} disabled={!formData.shift} className={`${inputClasses} appearance-none`}><option value="">Seleccione</option>{availableTimes.map(t => <option key={t} value={t}>{t} hs</option>)}</select></div>
                 </div>
