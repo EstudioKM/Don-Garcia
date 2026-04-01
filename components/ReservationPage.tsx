@@ -17,7 +17,7 @@ const ReservationPage: React.FC<ReservationPageProps> = ({ webImages }) => {
   return (
     <div className="bg-luxury-black text-white flex flex-col min-h-[100dvh]">
       {/* Contenido Principal */}
-      <main className="flex-grow p-4 sm:p-6 pb-32 max-w-2xl mx-auto w-full">
+      <main className="flex-grow p-4 sm:p-6 pb-24 max-w-2xl mx-auto w-full flex flex-col justify-center">
         <ReservationFlow 
           onSubmittingChange={setIsSubmitting} 
           webImages={webImages}

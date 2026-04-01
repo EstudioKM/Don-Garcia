@@ -560,36 +560,36 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange, w
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 1.02 }}
-            className="flex flex-col items-center text-center space-y-8 py-4"
+            className="flex flex-col h-[calc(100dvh-10rem)] sm:h-[600px] min-h-[450px] max-h-[800px] w-full relative rounded-[2rem] overflow-hidden shadow-2xl border border-white/10"
           >
-            <div className="flex flex-col items-center mb-4">
-              <h1 className="text-4xl font-serif text-gold tracking-[0.2em] font-bold leading-none">DON GARCÍA</h1>
-              <p className="text-stone-500 text-[10px] uppercase tracking-[0.4em] mt-2 font-medium">La Casona 1930</p>
-            </div>
-
-            <div className="relative w-full aspect-[4/3] rounded-[2.5rem] overflow-hidden shadow-2xl group border border-white/5">
+            {/* Background Image */}
+            <div className="absolute inset-0 z-0">
               <img 
                 src={webImages?.reservation || "https://images.unsplash.com/photo-1579532582937-16c108930bf6?auto=format&fit=crop&q=80&w=1000"} 
                 alt="Don Garcia" 
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000"
+                className="w-full h-full object-cover scale-105"
                 referrerPolicy="no-referrer"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
-            </div>
-            
-            <div className="space-y-4 px-6">
-              <p className="text-stone-400 text-lg leading-relaxed font-serif italic">
-                "Una experiencia gastronómica única frente al río Paraná, donde la historia se encuentra con el sabor."
-              </p>
+              <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/30 to-black/90" />
             </div>
 
-            <button 
-              onClick={nextStep}
-              className="w-full bg-gold text-black py-5 rounded-2xl font-bold text-lg shadow-[0_15px_40px_rgba(176,141,72,0.25)] flex items-center justify-center space-x-3 active:scale-[0.98] transition-all hover:bg-white hover:text-black"
-            >
-              <span>Reservar una Mesa</span>
-              <ChevronRight className="w-5 h-5" />
-            </button>
+            {/* Content */}
+            <div className="relative z-10 flex flex-col h-full p-6 sm:p-8">
+              <div className="flex flex-col items-center mt-8 sm:mt-12">
+                <h1 className="text-4xl sm:text-5xl font-serif text-gold tracking-[0.2em] font-bold leading-none text-center drop-shadow-lg">DON GARCÍA</h1>
+                <p className="text-stone-200 text-[10px] sm:text-xs uppercase tracking-[0.4em] mt-4 font-medium text-center drop-shadow-md">La Casona 1930</p>
+              </div>
+
+              <div className="mt-auto mb-2 sm:mb-4">
+                <button 
+                  onClick={nextStep}
+                  className="w-full bg-gold text-black py-5 sm:py-6 rounded-2xl font-bold text-lg sm:text-xl shadow-[0_15px_40px_rgba(176,141,72,0.4)] flex items-center justify-center space-x-3 active:scale-[0.98] transition-all hover:bg-white hover:text-black"
+                >
+                  <span className="tracking-wide uppercase">Reservar una Mesa</span>
+                  <ChevronRight className="w-6 h-6 sm:w-7 sm:h-7" />
+                </button>
+              </div>
+            </div>
           </motion.div>
         );
 
