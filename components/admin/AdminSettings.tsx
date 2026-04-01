@@ -198,9 +198,72 @@ const AdminSettings: React.FC = () => {
     setIsSaving(true);
     setStatus('idle');
     try {
+      const compressBase64Image = (base64Str: string, maxDim: number, quality: number): Promise<string> => {
+        return new Promise((resolve) => {
+          if (!base64Str || !base64Str.startsWith('data:image/')) {
+            resolve(base64Str);
+            return;
+          }
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height) {
+              if (width > maxDim) {
+                height *= maxDim / width;
+                width = maxDim;
+              }
+            } else {
+              if (height > maxDim) {
+                width *= maxDim / height;
+                height = maxDim;
+              }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(img, 0, 0, width, height);
+              resolve(canvas.toDataURL('image/jpeg', quality));
+            } else {
+              resolve(base64Str);
+            }
+          };
+          img.onerror = () => resolve(base64Str);
+          img.src = base64Str;
+        });
+      };
+
       const promises = [];
-      if (settings) promises.push(saveRestaurantSettings(settings));
-      if (layout) promises.push(saveLayout(layout));
+      
+      if (settings) {
+        const compressedSettings = { ...settings };
+        if (compressedSettings.webImages) {
+          for (const key of Object.keys(compressedSettings.webImages)) {
+            const val = compressedSettings.webImages[key as keyof typeof compressedSettings.webImages];
+            if (val) {
+              compressedSettings.webImages[key as keyof typeof compressedSettings.webImages] = await compressBase64Image(val, 800, 0.5);
+            }
+          }
+        }
+        promises.push(saveRestaurantSettings(compressedSettings));
+      }
+      
+      if (layout) {
+        const compressedLayout = { ...layout };
+        compressedLayout.environments = await Promise.all(
+          compressedLayout.environments.map(async (env) => {
+            if (env.image) {
+              return { ...env, image: await compressBase64Image(env.image, 600, 0.5) };
+            }
+            return env;
+          })
+        );
+        promises.push(saveLayout(compressedLayout));
+      }
       
       await Promise.all(promises);
       setStatus('success');

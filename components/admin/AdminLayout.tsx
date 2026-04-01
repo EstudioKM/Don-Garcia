@@ -12,21 +12,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ layout, setLayout }) => {
   const [envToDelete, setEnvToDelete] = useState<number | null>(null);
   const [editingTableJoin, setEditingTableJoin] = useState<{ envIndex: number, tableIndex: number } | null>(null);
 
-  const handleEnvironmentChange = (envIndex: number, field: 'name' | 'maxCapacity' | 'image' | 'description', value: string | number) => {
+  const handleEnvironmentChange = (envIndex: number, field: 'name' | 'image' | 'description', value: string | number) => {
     if (!layout) return;
     const nextState = produce(layout, draftState => {
-      if (field === 'maxCapacity') {
-        const newMaxCapacity = Number(value);
-        draftState.environments[envIndex].maxCapacity = newMaxCapacity;
-        // Also update tables if their capacity is now too high
-        draftState.environments[envIndex].tables.forEach(table => {
-          if (table.capacity > newMaxCapacity) {
-            table.capacity = newMaxCapacity;
-          }
-        });
-      } else {
-        (draftState.environments[envIndex] as any)[field] = value;
-      }
+      (draftState.environments[envIndex] as any)[field] = value;
     });
     setLayout(nextState);
   };
@@ -35,16 +24,37 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ layout, setLayout }) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check file size (limit to ~500KB to stay within Firestore 1MB document limit)
-    if (file.size > 500 * 1024) {
-      alert("La imagen es demasiado grande. Por favor, sube una imagen de menos de 500KB.");
-      return;
-    }
-
     const reader = new FileReader();
     reader.onloadend = () => {
-      const base64String = reader.result as string;
-      handleEnvironmentChange(envIndex, 'image', base64String);
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        const maxDim = 800;
+
+        if (width > height) {
+          if (width > maxDim) {
+            height *= maxDim / width;
+            width = maxDim;
+          }
+        } else {
+          if (height > maxDim) {
+            width *= maxDim / height;
+            height = maxDim;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6);
+          handleEnvironmentChange(envIndex, 'image', compressedBase64);
+        }
+      };
+      img.src = reader.result as string;
     };
     reader.readAsDataURL(file);
   };
@@ -52,9 +62,11 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ layout, setLayout }) => {
   const handleTableChange = (envIndex: number, tableIndex: number, field: 'name' | 'capacity', value: string | number) => {
     if (!layout) return;
     const nextState = produce(layout, draftState => {
-      const table = draftState.environments[envIndex].tables[tableIndex];
+      const env = draftState.environments[envIndex];
+      const table = env.tables[tableIndex];
       if (field === 'capacity') {
         table.capacity = Number(value);
+        env.maxCapacity = env.tables.reduce((sum, t) => sum + t.capacity, 0);
       } else {
         (table as any)[field] = value;
       }
@@ -62,14 +74,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ layout, setLayout }) => {
     setLayout(nextState);
   };
 
-  const calculateTotalCapacity = (envIndex: number) => {
-    if (!layout) return;
-    const total = layout.environments[envIndex].tables.reduce((sum, t) => sum + t.capacity, 0);
-    handleEnvironmentChange(envIndex, 'maxCapacity', total);
-  };
-
   const addEnvironment = () => {
-    const newEnv: Environment = { id: `env-${Date.now()}`, name: "Nuevo Ambiente", maxCapacity: 20, tables: [] };
+    const newEnv: Environment = { id: `env-${Date.now()}`, name: "Nuevo Ambiente", maxCapacity: 0, tables: [] };
     const nextState = produce(layout, draftState => {
         draftState?.environments.push(newEnv);
     });
@@ -79,7 +85,11 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ layout, setLayout }) => {
   const addTable = (envIndex: number) => {
     const newTable: Table = { id: `table-${Date.now()}`, name: "Mesa X", capacity: 2 };
     const nextState = produce(layout, draftState => {
-        draftState?.environments[envIndex].tables.push(newTable);
+        const env = draftState?.environments[envIndex];
+        if (env) {
+            env.tables.push(newTable);
+            env.maxCapacity = env.tables.reduce((sum, t) => sum + t.capacity, 0);
+        }
     });
     setLayout(nextState!);
   };
@@ -108,6 +118,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ layout, setLayout }) => {
         });
         
         env.tables.splice(tableIndex, 1);
+        env.maxCapacity = env.tables.reduce((sum, t) => sum + t.capacity, 0);
       });
       setLayout(nextState!);
   };
@@ -299,22 +310,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ layout, setLayout }) => {
                   <div className="flex items-center gap-3">
                     <div className="flex flex-col items-end">
                       <label className="text-[9px] uppercase tracking-widest text-stone-500 font-bold">Capacidad Máx.</label>
-                      {tablesSum !== env.maxCapacity && (
-                        <button 
-                          onClick={() => calculateTotalCapacity(envIndex)}
-                          className="text-[8px] text-gold hover:underline flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <Calculator size={8} />
-                          Usar suma ({tablesSum})
-                        </button>
-                      )}
                     </div>
-                    <input 
-                      type="number" 
-                      value={env.maxCapacity} 
-                      onChange={e => handleEnvironmentChange(envIndex, 'maxCapacity', parseInt(e.target.value) || 0)} 
-                      className="w-16 bg-stone-950 text-white py-1.5 px-2 rounded-lg border border-stone-800 focus:border-gold outline-none text-center text-sm font-bold"
-                    />
+                    <div className="w-16 bg-stone-950/50 text-stone-400 py-1.5 px-2 rounded-lg border border-stone-800/50 text-center text-sm font-bold cursor-not-allowed">
+                      {tablesSum}
+                    </div>
                   </div>
                   
                   <button 

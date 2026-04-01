@@ -22,15 +22,37 @@ const AdminImages: React.FC<AdminImagesProps> = ({ settings, setSettings }) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 800 * 1024) {
-      alert("La imagen es demasiado grande. Por favor, sube una imagen de menos de 800KB.");
-      return;
-    }
-
     const reader = new FileReader();
     reader.onloadend = () => {
-      const base64String = reader.result as string;
-      handleImageChange(field, base64String);
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        const maxDim = 1200; // Slightly larger for hero images
+
+        if (width > height) {
+          if (width > maxDim) {
+            height *= maxDim / width;
+            width = maxDim;
+          }
+        } else {
+          if (height > maxDim) {
+            width *= maxDim / height;
+            height = maxDim;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+          handleImageChange(field, compressedBase64);
+        }
+      };
+      img.src = reader.result as string;
     };
     reader.readAsDataURL(file);
   };
