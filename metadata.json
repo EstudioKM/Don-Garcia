@@ -1,8 +1,5 @@
 {
   "name": "DON GARCIA - github",
   "description": "Una experiencia gastronómica de lujo especializada en pescados de río, carnes a la estaca y una arquitectura histórica.",
-  "requestFramePermissions": [
-    "geolocation",
-    "microphone"
-  ]
+  "requestFramePermissions": []
 }

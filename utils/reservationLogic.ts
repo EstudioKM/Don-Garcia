@@ -11,7 +11,7 @@ function timeToMinutes(timeStr: string): number {
   return hours * 60 + minutes;
 }
 
-function getConnectedCombinations(tables: Table[]): Table[][] {
+function getConnectedCombinations(tables: Table[], maxTablesToJoin: number = 10, requiredCapacity?: number): Table[][] {
   const combinations: Table[][] = [];
   const n = tables.length;
   if (n === 0) return [];
@@ -25,12 +25,14 @@ function getConnectedCombinations(tables: Table[]): Table[][] {
     adj.set(t.id, neighbors);
   }
 
-  // To avoid duplicates, we can use a Set of sorted IDs
+  // To avoid duplicates
   const seen = new Set<string>();
+  const queued = new Set<string>();
 
   // BFS to find all connected subgraphs
   for (const startTable of tables) {
     const queue: Table[][] = [[startTable]];
+    queued.add(startTable.id);
     
     while (queue.length > 0) {
       const currentCombo = queue.shift()!;
@@ -41,6 +43,19 @@ function getConnectedCombinations(tables: Table[]): Table[][] {
       
       if (currentCombo.length > 1) {
         combinations.push(currentCombo);
+      }
+
+      // If we already meet the required capacity, any further addition will just create a strictly larger, non-optimal combination.
+      if (requiredCapacity !== undefined) {
+        const currentCapacity = currentCombo.reduce((sum, t) => sum + t.capacity, 0);
+        if (currentCapacity >= requiredCapacity) {
+          continue;
+        }
+      }
+
+      // Limit the number of joined tables to prevent exponential explosion hanging the browser
+      if (currentCombo.length >= maxTablesToJoin) {
+        continue;
       }
 
       // Find all neighbors of the current combination that are not already in it
@@ -59,7 +74,13 @@ function getConnectedCombinations(tables: Table[]): Table[][] {
       // For each neighbor, create a new combination
       for (const nId of comboNeighbors) {
         const neighborTable = tableMap.get(nId)!;
-        queue.push([...currentCombo, neighborTable]);
+        const nextCombo = [...currentCombo, neighborTable];
+        const nextKey = nextCombo.map(t => t.id).sort().join(',');
+        
+        if (!queued.has(nextKey) && !seen.has(nextKey)) {
+          queued.add(nextKey);
+          queue.push(nextCombo);
+        }
       }
     }
   }
@@ -106,7 +127,7 @@ export function checkAvailability(
   // 3. Find all valid combinations (single tables + connected combinations)
   const allCombinations = [
     ...availableTables.map(t => [t]),
-    ...getConnectedCombinations(availableTables)
+    ...getConnectedCombinations(availableTables, 10, requestedGuests)
   ];
   
   const fittingCombinations = allCombinations.filter(combo => {

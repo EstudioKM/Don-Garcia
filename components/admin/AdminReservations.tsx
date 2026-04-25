@@ -141,6 +141,7 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
                     <td>${r.name}</td>
                     <td>${r.guests}</td>
                     <td>${r.environmentName || 'N/A'}</td>
+                    <td>${r.tableName || '-'}</td>
                     <td>${notesContent}</td>
                 </tr>
             `;
@@ -180,11 +181,12 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
                             <th>Nombre</th>
                             <th>Cub.</th>
                             <th>Ambiente</th>
+                            <th>Mesa</th>
                             <th>Notas</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${middayRows.length > 0 ? middayRows : '<tr><td colspan="5" style="text-align: center; font-style: italic;">No hay reservas para este turno.</td></tr>'}
+                        ${middayRows.length > 0 ? middayRows : '<tr><td colspan="6" style="text-align: center; font-style: italic;">No hay reservas para este turno.</td></tr>'}
                     </tbody>
                 </table>
 
@@ -196,11 +198,12 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
                             <th>Nombre</th>
                             <th>Cub.</th>
                             <th>Ambiente</th>
+                            <th>Mesa</th>
                             <th>Notas</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${nightRows.length > 0 ? nightRows : '<tr><td colspan="5" style="text-align: center; font-style: italic;">No hay reservas para este turno.</td></tr>'}
+                        ${nightRows.length > 0 ? nightRows : '<tr><td colspan="6" style="text-align: center; font-style: italic;">No hay reservas para este turno.</td></tr>'}
                     </tbody>
                 </table>
 
@@ -263,6 +266,7 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
                 <td>${r.name}</td>
                 <td>${r.guests}</td>
                 <td>${r.environmentName || 'N/A'}</td>
+                <td>${r.tableName || '-'}</td>
                 <td>${notesContent}</td>
             </tr>
         `;
@@ -296,11 +300,12 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
                             <th>Nombre</th>
                             <th>Cub.</th>
                             <th>Ambiente</th>
+                            <th>Mesa</th>
                             <th>Notas</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${tableRows.length > 0 ? tableRows : '<tr><td colspan="5" style="text-align: center; font-style: italic;">No hay reservas para este turno.</td></tr>'}
+                        ${tableRows.length > 0 ? tableRows : '<tr><td colspan="6" style="text-align: center; font-style: italic;">No hay reservas para este turno.</td></tr>'}
                     </tbody>
                 </table>
                 <script>
