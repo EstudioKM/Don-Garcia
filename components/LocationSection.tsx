@@ -72,10 +72,11 @@ const LocationSection: React.FC<LocationSectionProps> = ({ webImages }) => {
           
           <div className="relative h-[300px] md:h-[500px] overflow-hidden rounded-sm shadow-xl">
              <img 
-               src={webImages?.location || "https://images.unsplash.com/photo-1579532582937-16c108930bf6?auto=format&fit=crop&q=80&w=1974"} 
+               src={webImages?.location || "https://images.unsplash.com/photo-1579532582937-16c108930bf6?auto=format&fit=crop&q=80&w=1200"} 
                alt="Fachada nocturna de la Casona de 1930 de Don García" 
                className="w-full h-full object-cover transition-all duration-1000 opacity-80"
                referrerPolicy="no-referrer"
+               loading="lazy"
              />
              <div className="absolute inset-0 bg-gold/10 pointer-events-none"></div>
              <div className="absolute bottom-4 left-4 bg-black/80 backdrop-blur px-3 py-1.5 rounded-sm shadow-lg">

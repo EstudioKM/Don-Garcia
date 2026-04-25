@@ -33,6 +33,7 @@ const EventsSection: React.FC<EventsSectionProps> = ({ webImages }) => {
             alt="Plato de carne de alta cocina servido en un evento exclusivo" 
             className="w-full h-full object-cover rounded-sm shadow-2xl opacity-70"
             referrerPolicy="no-referrer"
+            loading="lazy"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
           <div className="absolute bottom-6 md:bottom-10 left-6 md:left-10">

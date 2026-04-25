@@ -15,7 +15,8 @@ import {
   ChevronDown,
   X,
   Sun,
-  Moon
+  Moon,
+  ZoomIn
 } from 'lucide-react';
 import { createReservation, getReservationsForDate, listenToReservationsForDate } from '../services/reservationRepository';
 import { findOrCreateCustomer } from '../services/customerRepository';
@@ -183,6 +184,7 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange, w
     occasion: '',
   });
 
+  const [showMoreGuests, setShowMoreGuests] = useState(false);
   const [settings, setSettings] = useState<RestaurantSettings | null>(null);
   const [layout, setLayout] = useState<Layout | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -610,7 +612,7 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange, w
             </div>
             
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-              {Array.from({length: 30}, (_, i) => i + 1).map(n => (
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => (
                 <button
                   key={n}
                   onClick={() => {
@@ -626,6 +628,47 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange, w
                   {n}
                 </button>
               ))}
+            </div>
+
+            <div className="mt-6 flex flex-col items-center">
+              {!showMoreGuests ? (
+                <button 
+                  onClick={() => setShowMoreGuests(true)}
+                  className="text-[10px] uppercase tracking-[0.2em] text-stone-500 hover:text-gold transition-colors font-bold flex items-center space-x-2 py-2 px-4 rounded-full border border-transparent hover:border-gold/20"
+                >
+                  <span>¿Grupos mayores a 12?</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              ) : (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="w-full flex-col sm:flex-row flex items-end sm:items-center gap-4 bg-stone-900/50 p-6 rounded-2xl border border-white/5"
+                >
+                  <div className="flex-1 w-full">
+                    <label className="text-[10px] uppercase tracking-widest text-stone-500 font-bold mb-3 block">Número de Comensales (Máx. 30)</label>
+                    <select
+                      value={formData.guests > 12 ? formData.guests : 13}
+                      onChange={(e) => setFormData(prev => ({ ...prev, guests: parseInt(e.target.value) }))}
+                      className="w-full bg-stone-950 border border-stone-800 rounded-xl p-4 text-white focus:border-gold outline-none text-lg appearance-none cursor-pointer hover:border-stone-700 transition-colors"
+                    >
+                      {Array.from({length: 18}, (_, i) => i + 13).map(num => (
+                        <option key={num} value={num}>{num} personas</option>
+                      ))}
+                    </select>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      if (formData.guests <= 12) setFormData(prev => ({ ...prev, guests: 13 }));
+                      nextStep();
+                    }}
+                    className="w-full sm:w-auto bg-gold text-black px-8 py-4 rounded-xl font-bold hover:bg-white transition-colors flex items-center justify-center gap-2 shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+                  >
+                    Confirmar
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </motion.div>
+              )}
             </div>
           </motion.div>
         );
@@ -836,71 +879,80 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange, w
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                {environmentsWithAvailability.map(env => (
+                {environmentsWithAvailability.filter(env => env.isAvailable).map(env => (
                   <div key={env.id} className="relative group">
-                    <button
-                      disabled={!env.isAvailable}
+                    <div
                       onClick={() => {
-                        if (env.isAvailable) {
+                        setFormData(prev => ({ ...prev, environmentId: env.id }));
+                        nextStep();
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
                           setFormData(prev => ({ ...prev, environmentId: env.id }));
                           nextStep();
                         }
                       }}
-                      className={`w-full overflow-hidden rounded-2xl border transition-all duration-500 text-left relative flex flex-col h-full shadow-2xl ${
+                      role="button"
+                      tabIndex={0}
+                      className={`cursor-pointer outline-none w-full overflow-hidden rounded-2xl border transition-all duration-300 text-left relative flex flex-col h-full shadow-lg ${
                         formData.environmentId === env.id 
-                        ? 'border-gold shadow-[0_0_30px_rgba(212,175,55,0.15)] scale-[1.02] z-10 bg-stone-900/80' 
-                        : !env.isAvailable
-                          ? 'border-stone-800/50 bg-stone-950/30 opacity-60 cursor-not-allowed'
-                          : 'border-stone-800/80 hover:border-gold/30 bg-stone-900/40 hover:bg-stone-900/80 hover:-translate-y-1'
+                        ? 'border-gold shadow-[0_0_20px_rgba(212,175,55,0.2)] bg-stone-900 scale-[1.01]' 
+                        : 'border-stone-800 hover:border-gold/50 bg-stone-900 hover:shadow-xl hover:-translate-y-1'
                       }`}
                     >
-                      <div className="h-40 relative overflow-hidden shrink-0 w-full">
+                      <div className="h-48 relative overflow-hidden shrink-0 w-full bg-stone-950">
                         <img 
                           src={env.image || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=600"} 
                           alt={env.name}
-                          className={`w-full h-full object-cover transition-transform duration-1000 ${
-                            formData.environmentId === env.id ? 'scale-110 opacity-80' : 'opacity-50 group-hover:opacity-70 group-hover:scale-105'
-                          } ${!env.isAvailable ? 'grayscale opacity-30' : ''}`}
+                          className={`w-full h-full object-cover transition-transform duration-700 ${
+                            formData.environmentId === env.id ? 'scale-105 opacity-100' : 'opacity-80 group-hover:scale-105 group-hover:opacity-100'
+                          }`}
                           referrerPolicy="no-referrer"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-stone-950 via-stone-950/60 to-transparent" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-stone-900 to-transparent opacity-80" />
                         
-                        {!env.isAvailable && (
-                          <div className="absolute inset-0 flex items-center justify-center p-4">
-                            <div className="bg-red-500/90 text-white px-4 py-2 rounded-md text-xs font-bold uppercase tracking-widest text-center shadow-lg backdrop-blur-sm">
-                              {env.availabilityReason || "Sin Mesas"}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div className="p-6 relative z-10 flex flex-col flex-grow bg-gradient-to-b from-stone-950 to-stone-900/90">
-                        <div className="flex items-start justify-between mb-2">
-                          <h3 className={`text-2xl font-serif leading-tight ${formData.environmentId === env.id ? 'text-gold' : 'text-stone-100 group-hover:text-gold transition-colors'}`}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedEnvForModal(env);
+                          }}
+                          className="absolute top-4 right-4 p-2.5 bg-black/40 hover:bg-black/80 backdrop-blur-md rounded-full text-white/70 hover:text-white transition-all transform hover:scale-110 shadow-lg border border-white/10 z-20"
+                          title="Ampliar imagen"
+                        >
+                          <ZoomIn className="w-5 h-5" />
+                        </button>
+
+                        <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between">
+                          <h3 className={`text-2xl font-serif leading-tight drop-shadow-md ${formData.environmentId === env.id ? 'text-gold' : 'text-white'}`}>
                             {env.name}
                           </h3>
                           {formData.environmentId === env.id && (
-                            <CheckCircle2 className="w-6 h-6 text-gold shrink-0 ml-4" />
+                            <CheckCircle2 className="w-6 h-6 text-gold shrink-0 drop-shadow-md mb-1" />
                           )}
                         </div>
-                        
-                        <div className="flex items-center space-x-3 mb-4">
-                          <span className="text-gold/80 text-[10px] uppercase tracking-widest font-bold">Capacidad: {env.maxCapacity}p</span>
-                          {env.isAvailable && (
-                            <span className="flex items-center text-[10px] text-emerald-500 font-bold uppercase tracking-widest">
-                              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5 animate-pulse" />
-                              Disponible
-                            </span>
-                          )}
+                      </div>
+                      
+                      <div className="p-5 flex flex-col flex-grow">
+                        <div className="flex items-center space-x-3 mb-3">
+                          <span className="flex items-center text-[10px] text-emerald-500 font-bold uppercase tracking-widest">
+                            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5 animate-pulse" />
+                            Disponible
+                          </span>
                         </div>
 
-                        {env.description && (
-                          <p className="text-stone-400 text-sm font-light leading-relaxed mb-4 line-clamp-3 group-hover:line-clamp-none transition-all duration-500 flex-grow">
+                        {env.description ? (
+                          <p className="text-stone-400 text-sm font-light leading-relaxed">
                             {env.description}
+                          </p>
+                        ) : (
+                          <p className="text-stone-500 text-sm font-light leading-relaxed italic opacity-50">
+                            Sin descripción
                           </p>
                         )}
                       </div>
-                    </button>
+                    </div>
                   </div>
                 ))}
               </div>

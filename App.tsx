@@ -1,21 +1,28 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense, lazy } from 'react';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import Menu from './components/Menu';
 import Reservation from './components/Reservation';
 import SommelierAssistant from './components/SommelierAssistant';
-import { SommelierPage } from './components/SommelierPage';
 import LocationSection from './components/LocationSection';
 import EventsSection from './components/EventsSection';
-import AdminMenu from './components/AdminMenu';
-import Login from './components/Login';
 import { seedReservations, seedLayout, seedSettings, seedCustomers } from './services/seedService';
 import { getRestaurantSettings, subscribeToRestaurantSettings } from './services/settingsRepository';
 import { RestaurantSettings } from './types';
-import ReservationPage from './components/ReservationPage';
 import { auth } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { bootstrapAdmin } from './services/userService';
+
+const SommelierPage = lazy(() => import('./components/SommelierPage').then(module => ({ default: module.SommelierPage })));
+const AdminMenu = lazy(() => import('./components/AdminMenu'));
+const Login = lazy(() => import('./components/Login'));
+const ReservationPage = lazy(() => import('./components/ReservationPage'));
+
+const LoadingScreen = () => (
+  <div className="min-h-[100dvh] bg-luxury-black flex items-center justify-center">
+    <div className="text-gold font-serif text-3xl animate-pulse tracking-widest uppercase">Don García</div>
+  </div>
+);
 
 const getRouteFromHash = () => {
   const hash = window.location.hash.substring(1); // -> "/reservar" o ""
@@ -125,10 +132,11 @@ const App: React.FC = () => {
       <section id="about" className="py-24 max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-16 md:gap-24 items-center reveal">
         <div className="relative">
           <img 
-            src={settings?.webImages?.about || "https://images.unsplash.com/photo-1579532582937-16c108930bf6?auto=format&fit=crop&q=80&w=1974"} 
+            src={settings?.webImages?.about || "https://images.unsplash.com/photo-1579532582937-16c108930bf6?auto=format&fit=crop&q=80&w=1200"} 
             alt="La Casona 1930 Don Garcia" 
             className="w-full h-[550px] md:h-[600px] object-cover shadow-2xl rounded-sm opacity-80"
             referrerPolicy="no-referrer"
+            loading="lazy"
           />
           <div className="absolute -bottom-8 -right-4 md:-bottom-10 md:-right-10 bg-[#111] border-t-2 border-gold p-8 md:p-10 shadow-2xl">
              <p className="text-4xl font-serif text-gold mb-2">1930</p>
@@ -227,16 +235,18 @@ const App: React.FC = () => {
 
   return (
     <div className={`min-h-screen bg-luxury-black text-stone-400 ${isSommelierPageOpen || isAdminOpen ? 'overflow-hidden' : ''}`}>
-      {isAdminOpen ? (
-        user ? (
-          <AdminMenu onClose={() => setIsAdminOpen(false)} />
-        ) : (
-          <Login onLoginSuccess={() => setIsAdminOpen(true)} onClose={() => setIsAdminOpen(false)} />
-        )
-      ) : 
-        isSommelierPageOpen ? <SommelierPage onClose={() => setIsSommelierPageOpen(false)} /> : 
-        (route === '/reservar' ? <ReservationPage webImages={settings?.webImages} /> : renderMainPage())
-      }
+      <Suspense fallback={<LoadingScreen />}>
+        {isAdminOpen ? (
+          user ? (
+            <AdminMenu onClose={() => setIsAdminOpen(false)} />
+          ) : (
+            <Login onLoginSuccess={() => setIsAdminOpen(true)} onClose={() => setIsAdminOpen(false)} />
+          )
+        ) : 
+          isSommelierPageOpen ? <SommelierPage onClose={() => setIsSommelierPageOpen(false)} /> : 
+          (route === '/reservar' ? <ReservationPage webImages={settings?.webImages} /> : renderMainPage())
+        }
+      </Suspense>
     </div>
   );
 };

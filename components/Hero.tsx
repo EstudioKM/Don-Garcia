@@ -34,7 +34,7 @@ const Hero: React.FC<HeroProps> = ({ webImages }) => {
           initial={{ scale: 1.1, opacity: 0 }}
           animate={{ scale: 1, opacity: 0.8 }}
           transition={{ duration: 1.5, ease: "easeOut" }}
-          src={webImages?.hero || "https://images.unsplash.com/photo-1554998171-89445e31c52b?auto=format&fit=crop&q=80&w=1974"} 
+          src={webImages?.hero || "https://images.unsplash.com/photo-1554998171-89445e31c52b?auto=format&fit=crop&q=80&w=1200"} 
           alt="Primer plano de carnes cocinándose sobre fuegos de parrilla"
           className="w-full h-full object-cover" 
           referrerPolicy="no-referrer"
