@@ -1208,14 +1208,6 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange, w
                   </div>
                 </button>
               </div>
-
-              <button 
-                onClick={nextStep}
-                className="w-full bg-gold text-black py-5 rounded-2xl font-bold text-lg shadow-lg flex items-center justify-center space-x-3 transition-all hover:bg-white active:scale-95"
-              >
-                <span>Continuar</span>
-                <ChevronRight className="w-5 h-5" />
-              </button>
             </div>
           </motion.div>
         );
@@ -1244,14 +1236,6 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange, w
                 placeholder="Ej: Mesa cerca de la ventana, alergias específicas, etc." 
                 className="w-full bg-stone-900/30 border border-white/20 py-5 px-6 rounded-2xl focus:border-gold outline-none h-40 resize-none text-white placeholder:text-stone-500 text-lg transition-all"
               />
-
-              <button 
-                onClick={nextStep}
-                className="w-full bg-gold text-black py-5 rounded-2xl font-bold text-lg shadow-lg flex items-center justify-center space-x-3 transition-all hover:bg-white active:scale-95"
-              >
-                <span>Siguiente</span>
-                <ChevronRight className="w-5 h-5" />
-              </button>
             </div>
           </motion.div>
         );
@@ -1280,19 +1264,15 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange, w
                   type="text" 
                   value={formData.name}
                   onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && formData.name.trim() !== '') {
+                      nextStep();
+                    }
+                  }}
                   placeholder="Nombre completo"
                   className="w-full bg-transparent text-white text-2xl outline-none font-serif placeholder:text-stone-600"
                 />
               </div>
-
-              <button 
-                disabled={!formData.name.trim()}
-                onClick={nextStep}
-                className="w-full bg-gold text-black py-5 rounded-2xl font-bold text-lg shadow-lg flex items-center justify-center space-x-3 disabled:opacity-30 transition-all hover:bg-white active:scale-95"
-              >
-                <span>Siguiente</span>
-                <ChevronRight className="w-5 h-5" />
-              </button>
             </div>
           </motion.div>
         );
@@ -1323,6 +1303,11 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange, w
                     type="tel" 
                     value={formData.phone}
                     onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && formData.phone.trim() !== '') {
+                        handleFinalSubmit();
+                      }
+                    }}
                     placeholder="Ej: 342 4066887"
                     className="w-full bg-transparent text-white text-2xl outline-none font-bold placeholder:text-stone-600"
                   />
@@ -1335,15 +1320,6 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange, w
                   <p className="text-sm font-medium">{error}</p>
                 </div>
               )}
-
-              <button 
-                disabled={!formData.phone.trim()}
-                onClick={handleFinalSubmit}
-                className="w-full bg-gold text-black py-5 rounded-2xl font-bold text-lg shadow-lg flex items-center justify-center space-x-3 disabled:opacity-30 transition-all hover:bg-white active:scale-95"
-              >
-                <span>Finalizar Reserva</span>
-                <CheckCircle2 className="w-5 h-5" />
-              </button>
             </div>
           </motion.div>
         );
@@ -1418,63 +1394,56 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange, w
     }
   };
 
-  // Summary Bar
-  const showSummary = step !== 'welcome' && step !== 'confirming' && step !== 'success';
+  const isStepValid = () => {
+    switch(step) {
+      case 'guests': return formData.guests > 0;
+      case 'date': return formData.date !== '';
+      case 'time': return formData.time !== '';
+      case 'sector': return !!formData.environmentId;
+      case 'occasion': return true;
+      case 'preferences': return true;
+      case 'notes': return true;
+      case 'name': return formData.name.trim() !== '';
+      case 'phone': return formData.phone.trim() !== '';
+      default: return true;
+    }
+  };
+
+  const showNavigation = step !== 'welcome' && step !== 'confirming' && step !== 'success';
 
   return (
     <div className="flex flex-col h-full relative">
-      <div className={`flex-grow ${showSummary ? 'pb-32' : ''}`}>
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={step}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.3 }}
-          >
-            {renderStep()}
-          </motion.div>
-        </AnimatePresence>
-      </div>
-
-      {showSummary && (
+      {/* HEADER (Resumen) */}
+      {showNavigation && (
         <motion.div 
-          initial={{ y: 100 }}
+          initial={{ y: -100 }}
           animate={{ y: 0 }}
-          className="fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-3xl border-t border-white/10 p-5 pb-10 z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]"
+          className="fixed top-0 left-0 right-0 bg-black/95 backdrop-blur-3xl border-b border-white/10 p-3 pt-6 sm:p-5 z-50 shadow-[0_10px_40px_rgba(0,0,0,0.5)]"
         >
-          <div className="max-w-md mx-auto flex items-center justify-between gap-4">
-            <div className="flex items-center space-x-4">
-              <button 
-                onClick={prevStep}
-                className="w-12 h-12 flex-shrink-0 rounded-full bg-white/10 flex items-center justify-center text-stone-300 hover:text-white hover:bg-white/20 transition-all border border-white/10 active:scale-90 shadow-lg"
-              >
-                <ChevronLeft className="w-6 h-6" />
-              </button>
-              <div className="flex flex-col min-w-0">
-                <span className="text-[9px] uppercase tracking-[0.3em] text-gold font-bold mb-1">Resumen de Reserva</span>
-                <div className="flex flex-wrap items-center gap-1.5 text-white text-xs font-bold">
-                  {formData.guests > 0 && (
-                    <button onClick={() => setStep('guests')} className="bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded-md transition-colors">
-                      {formData.guests} pers.
-                    </button>
-                  )}
-                  {formData.date && (
-                    <button onClick={() => setStep('date')} className="bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded-md transition-colors">
-                      {new Date(formData.date + 'T00:00:00-03:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
-                    </button>
-                  )}
-                  {formData.time && (
-                    <button onClick={() => setStep('time')} className="bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded-md transition-colors">
-                      {formData.time}
-                    </button>
-                  )}
-                  {formData.environmentId && (
-                    <button onClick={() => setStep('sector')} className="bg-gold/20 hover:bg-gold/30 text-gold px-2 py-0.5 rounded-md truncate max-w-[120px] transition-colors">
-                      {layout?.environments.find(e => e.id === formData.environmentId)?.name}
-                    </button>
-                  )}
-                </div>
+          <div className="max-w-2xl mx-auto flex items-center justify-between gap-4">
+            <div className="flex flex-col min-w-0">
+              <span className="text-[9px] uppercase tracking-[0.3em] text-gold font-bold mb-1">Resumen de Reserva</span>
+              <div className="flex flex-wrap items-center gap-1.5 text-white text-xs font-bold">
+                {formData.guests > 0 && (
+                  <button onClick={() => setStep('guests')} className="bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded-md transition-colors">
+                    {formData.guests} pers.
+                  </button>
+                )}
+                {formData.date && (
+                  <button onClick={() => setStep('date')} className="bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded-md transition-colors">
+                    {new Date(formData.date + 'T00:00:00-03:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
+                  </button>
+                )}
+                {formData.time && (
+                  <button onClick={() => setStep('time')} className="bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded-md transition-colors">
+                    {formData.time}
+                  </button>
+                )}
+                {formData.environmentId && (
+                  <button onClick={() => setStep('sector')} className="bg-gold/20 hover:bg-gold/30 text-gold px-2 py-0.5 rounded-md truncate max-w-[120px] transition-colors">
+                    {layout?.environments.find(e => e.id === formData.environmentId)?.name}
+                  </button>
+                )}
               </div>
             </div>
             
@@ -1495,6 +1464,48 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange, w
                 );
               })}
             </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* CONTENT */}
+      <div className={`flex-grow h-full max-h-full overflow-y-auto ${showNavigation ? 'pt-24 pb-32 sm:pb-36' : ''}`}>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={step}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.3 }}
+            className="min-h-full flex flex-col"
+          >
+            {renderStep()}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {/* FOOTER (Botones) */}
+      {showNavigation && (
+        <motion.div 
+          initial={{ y: 100 }}
+          animate={{ y: 0 }}
+          className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/95 to-transparent backdrop-blur-sm p-5 pb-8 sm:pb-10 z-50 pointer-events-none"
+        >
+          <div className="max-w-2xl mx-auto flex items-center justify-between gap-4 pointer-events-auto">
+            <button 
+              onClick={prevStep}
+              className="w-14 h-14 flex-shrink-0 rounded-2xl bg-white/10 flex items-center justify-center text-stone-300 hover:text-white hover:bg-white/20 transition-all border border-white/10 active:scale-95 shadow-lg"
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+            <button 
+              disabled={!isStepValid()}
+              onClick={step === 'phone' ? handleFinalSubmit : nextStep}
+              className="flex-grow bg-gold text-black h-14 rounded-2xl font-bold text-lg shadow-lg flex items-center justify-center space-x-3 transition-all hover:bg-white active:scale-95 disabled:opacity-30 disabled:hover:bg-gold disabled:active:scale-100"
+            >
+              <span>{step === 'phone' ? 'Finalizar Reserva' : 'Continuar'}</span>
+              {step === 'phone' ? <CheckCircle2 className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+            </button>
           </div>
         </motion.div>
       )}

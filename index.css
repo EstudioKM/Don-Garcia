@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+@layer base {
+  html { scroll-behavior: smooth; font-size: 16px; }
+  body { background-color: #050505; color: #a8a29e; font-family: 'Inter', sans-serif; line-height: 1.6; }
+  h1, h2, h3, .font-serif {
+      font-family: 'Playfair Display', serif;
+      letter-spacing: -0.02em;
+      color: #fafaf9;
+  }
+}
+
+@layer utilities {
+  .bg-luxury-black { background-color: #050505; }
+  .text-gold { color: #b08d48; }
+  .border-gold { border-color: #b08d48; }
+  .bg-gold { background-color: #b08d48; }
+  
+  .reveal {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.8s ease-out;
+  }
+  .reveal.active {
+      opacity: 1;
+      transform: translateY(0);
+  }
+
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-track { background: #050505; }
+  ::-webkit-scrollbar-thumb { background: #b08d48; border-radius: 4px; }
+  
+  .order-scrollbar::-webkit-scrollbar { width: 4px; }
+  .order-scrollbar::-webkit-scrollbar-track { background: transparent; }
+  .order-scrollbar::-webkit-scrollbar-thumb { background: #b08d48; border-radius: 2px; }
+
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+  }
+  .animate-fadeInUp { animation: fadeInUp 1s ease-out forwards; }
+
+  @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+  }
+  .animate-fadeIn { animation: fadeIn 0.3s ease-out forwards; }
+
+  @keyframes scaleIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+  }
+  .animate-scaleIn { animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+}
+
+@layer components {
+    input, select, textarea {
+        font-size: 1rem !important;
+    }
+}
