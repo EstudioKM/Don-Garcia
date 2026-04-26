@@ -101,6 +101,135 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
     if (newDate < today) return; setSelectedDate(newDate);
   };
   
+  const handlePrintGrid = () => {
+    if (!layout) return;
+
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'absolute';
+    iframe.style.width = '0px';
+    iframe.style.height = '0px';
+    iframe.style.border = 'none';
+    document.body.appendChild(iframe);
+
+    const printWindow = iframe.contentWindow;
+    const printDocument = printWindow?.document;
+
+    if (!printWindow || !printDocument) {
+        alert('No se pudo generar la vista de impresión.');
+        document.body.removeChild(iframe);
+        return;
+    }
+
+    const generateTableContent = (reservations: Reservation[], title: string) => {
+        let rows = '';
+
+        layout.environments.forEach(env => {
+            env.tables.forEach((table) => {
+                const tableReservations = reservations.filter(r => r.environmentId === env.id && r.tableId === table.id && r.status !== 'cancelada');
+                
+                if (tableReservations.length === 0) {
+                    rows += `
+                        <tr>
+                            <td>${env.name.toUpperCase()}</td>
+                            <td>${table.name}</td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td style="text-align: center;">${table.capacity}</td>
+                        </tr>
+                    `;
+                } else {
+                    tableReservations.forEach((r) => {
+                        let notesContent = [];
+                        if (r.specialRequests) notesContent.push(r.specialRequests);
+                        if (r.dietaryRestrictions && r.dietaryRestrictions.length > 0) notesContent.push(r.dietaryRestrictions.join(', '));
+                        if (r.reducedMobility) notesContent.push('Movilidad reducida');
+                        if (r.hasChildren) notesContent.push('Con niños');
+                        if (r.occasion && r.occasion !== 'Cena / Almuerzo Casual' && r.occasion !== 'Cena casual') notesContent.push(r.occasion);
+
+                        rows += `
+                            <tr>
+                                <td>${env.name.toUpperCase()}</td>
+                                <td>${table.name}</td>
+                                <td>${r.name.toUpperCase()}</td>
+                                <td style="text-align: center;">${r.guests}</td>
+                                <td style="text-align: center;">${r.time}</td>
+                                <td>${notesContent.join(' / ').toUpperCase()}</td>
+                                <td style="text-align: center;">${table.capacity}</td>
+                            </tr>
+                        `;
+                    });
+                }
+            });
+        });
+
+        return `
+            <div class="page-break">
+                <div class="header-title">Ocupación: ${title} - ${selectedDate.toLocaleDateString('es-AR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).toUpperCase()}</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 15%;">AMBIENTE</th>
+                            <th style="width: 8%;">MESA</th>
+                            <th style="width: 25%;">NOMBRE Y APELLIDO</th>
+                            <th style="width: 7%;">CANT.</th>
+                            <th style="width: 7%;">HORA</th>
+                            <th style="width: 30%;">OBS.</th>
+                            <th style="width: 8%;">CAP.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    };
+
+    const content = `
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <title>Grilla de Ocupación</title>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 0; padding: 15px; color: black; background: white; font-size: 11px; }
+                    .header-title { font-weight: bold; font-size: 14px; margin-bottom: 10px; border-bottom: 2px solid black; padding-bottom: 5px; }
+                    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                    th, td { border: 1px solid #000; padding: 6px 8px; font-size: 11px; }
+                    th { font-weight: bold; background-color: #f0f0f0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; text-align: center; }
+                    td:first-child, td:nth-child(2), td:nth-child(3), td:nth-child(6) { text-align: left; }
+                    .page-break { page-break-after: always; }
+                    .page-break:last-child { page-break-after: auto; }
+                    @media print {
+                        body { margin: 0; padding: 10px; }
+                        table { page-break-inside: auto; }
+                        tr { page-break-inside: avoid; page-break-after: auto; }
+                        @page { size: landscape; margin: 1cm; }
+                    }
+                </style>
+            </head>
+            <body>
+                ${generateTableContent(middayReservations, 'TURNO MEDIODÍA')}
+                ${generateTableContent(nightReservations, 'TURNO NOCHE')}
+                <script>
+                    window.onload = function() { window.print(); }
+                </script>
+            </body>
+        </html>
+    `;
+
+    printDocument.open();
+    printDocument.write(content);
+    printDocument.close();
+
+    setTimeout(() => {
+        if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe);
+        }
+    }, 2000);
+  };
+
   const handlePrint = () => {
     const iframe = document.createElement('iframe');
     iframe.style.position = 'absolute';
@@ -926,13 +1055,20 @@ const AdminReservations: React.FC<AdminReservationsProps> = ({ preselectedDate }
             </div>
 
             {/* Right: Create reservation button (Desktop) */}
-            <div className="hidden lg:flex flex-1 justify-end">
+            <div className="hidden lg:flex flex-col flex-1 items-end gap-3">
                 <button 
                   onClick={openNewReservationModal}
                   className="bg-gold hover:bg-gold-light text-black px-6 py-3 rounded-full font-bold uppercase tracking-[0.15em] text-[10px] flex items-center gap-2 transition-all shadow-xl shadow-gold/20 active:scale-95 group"
                 >
                     <Plus size={18} className="group-hover:rotate-90 transition-transform duration-300" />
                     Nueva Reserva
+                </button>
+                <button 
+                  onClick={handlePrintGrid}
+                  className="text-stone-400 hover:text-gold text-[10px] uppercase font-bold tracking-widest flex items-center gap-1.5 transition-all mr-2"
+                  title="Imprimir tabla de ocupación (grilla)"
+                >
+                    <Printer size={14} /> Imprimir Tabla
                 </button>
             </div>
         </div>
