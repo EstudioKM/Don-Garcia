@@ -119,8 +119,8 @@ const ReservationModal: React.FC<ReservationModalProps> = ({ isOpen, onClose, re
   }, [formData.dateString, settings]);
 
   const availableTimes = useMemo(() => {
-    if (formData.shift === 'mediodia') return ['12:00', '13:00', '14:00'];
-    if (formData.shift === 'noche') return ['20:30', '21:00', '21:30', '22:00'];
+    if (formData.shift === 'mediodia') return ['12:00', '12:30', '13:00', '13:30', '14:00', '14:30'];
+    if (formData.shift === 'noche') return ['20:30', '21:00', '21:30', '22:00', '22:30', '23:00'];
     return [];
   }, [formData.shift]);
   
@@ -361,7 +361,7 @@ const ReservationModal: React.FC<ReservationModalProps> = ({ isOpen, onClose, re
           dietaryRestrictions: formData.dietaryRestrictions || [],
           reducedMobility: formData.reducedMobility || false,
           hasChildren: formData.hasChildren || false,
-          occasion: formData.occasion || 'Cena casual',
+          occasion: formData.occasion || 'Cena / Almuerzo Casual',
           customerId: customerId,
           duration: 120, // Default duration
       };
@@ -643,11 +643,11 @@ const ReservationModal: React.FC<ReservationModalProps> = ({ isOpen, onClose, re
                         <div className="pt-2 border-t border-stone-800">
                             <label className="text-[10px] uppercase tracking-widest text-stone-400 block mb-1">Motivo</label>
                             <select
-                                value={formData.occasion || 'Cena casual'}
+                                value={formData.occasion || 'Cena / Almuerzo Casual'}
                                 onChange={(e) => setFormData({ ...formData, occasion: e.target.value })}
                                 className={`${inputClasses} appearance-none`}
                             >
-                                <option value="Cena casual">Cena casual</option>
+                                <option value="Cena / Almuerzo Casual">Cena / Almuerzo Casual</option>
                                 <option value="Aniversario">Aniversario</option>
                                 <option value="Cumpleaños">Cumpleaños</option>
                                 <option value="Reunión Empresarial">Reunión Empresarial</option>

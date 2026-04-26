@@ -1376,7 +1376,7 @@ const ReservationFlow: React.FC<ReservationFlowProps> = ({ onSubmittingChange, w
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-stone-400 text-xs uppercase tracking-[0.2em] font-bold">Motivo</span>
-                <span className="text-white font-bold text-base text-right ml-4">{formData.occasion || 'Cena casual'}</span>
+                <span className="text-white font-bold text-base text-right ml-4">{formData.occasion || 'Cena / Almuerzo Casual'}</span>
               </div>
             </div>
 

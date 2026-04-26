@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Layout, Environment, Table } from '../../types';
 import { produce } from 'immer';
-import { Plus, Trash2, Calculator, X, Link, Image as ImageIcon, Upload, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Trash2, Calculator, X, Link, Image as ImageIcon, Upload, ChevronDown, ChevronUp, Download } from 'lucide-react';
 
 interface AdminLayoutProps {
   layout: Layout | null;
@@ -307,17 +307,18 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ layout, setLayout }) => {
                     <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-1">
                         <label className="text-[9px] uppercase tracking-widest text-stone-500 font-bold">Imagen del Ambiente</label>
-                        <div className="flex gap-3 items-start">
-                          <div className="relative w-16 h-16 rounded-lg bg-stone-950 border border-stone-800 overflow-hidden flex-shrink-0 group/img">
+                        <div className="flex gap-4 items-center">
+                          <div className="relative w-24 h-24 rounded-lg bg-stone-950 border border-stone-800 overflow-hidden flex-shrink-0 group/img">
                             {env.image ? (
                               <img src={env.image} alt={env.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center text-stone-700">
-                                <ImageIcon size={20} />
+                              <div className="w-full h-full flex flex-col items-center justify-center text-stone-700 gap-1 cursor-pointer">
+                                <ImageIcon size={24} />
+                                <span className="text-[8px] uppercase tracking-wider text-stone-500">Subir</span>
                               </div>
                             )}
                             <label className="absolute inset-0 bg-black/60 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
-                              <Upload size={16} className="text-white" />
+                              <Upload size={20} className="text-white" />
                               <input 
                                 type="file" 
                                 className="hidden" 
@@ -326,15 +327,24 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ layout, setLayout }) => {
                               />
                             </label>
                           </div>
-                          <div className="flex-grow">
-                            <input 
-                              value={env.image || ''} 
-                              onChange={e => handleEnvironmentChange(envIndex, 'image', e.target.value)} 
-                              className="w-full bg-stone-950 text-stone-300 py-1.5 px-3 rounded-lg border border-stone-800 focus:border-gold outline-none text-xs"
-                              placeholder="URL de la imagen..."
-                            />
-                            <p className="text-[8px] text-stone-600 mt-1 uppercase tracking-tighter">Pega una URL o haz clic en el cuadro para subir</p>
-                          </div>
+                          
+                          {env.image && (
+                            <button
+                              onClick={() => {
+                                const a = document.createElement('a');
+                                a.href = env.image as string;
+                                a.download = `ambiente-${env.name.replace(/\s+/g, '-').toLowerCase()}.jpg`;
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                              }}
+                              className="p-3 bg-stone-900 border border-stone-800 hover:border-gold rounded-lg text-stone-400 hover:text-gold transition-all group flex items-center gap-2"
+                              title="Descargar imagen"
+                            >
+                              <Download size={18} className="group-hover:-translate-y-0.5 transition-transform" />
+                              <span className="text-[10px] uppercase font-bold tracking-widest hidden sm:inline">Descargar</span>
+                            </button>
+                          )}
                         </div>
                       </div>
                       <div className="space-y-1">
