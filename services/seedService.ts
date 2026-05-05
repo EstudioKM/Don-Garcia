@@ -223,14 +223,12 @@ export const seedCustomers = async () => {
         const customersCollection = collection(db, CUSTOMERS_COLLECTION);
         const snapshot = await getDocs(customersCollection);
         if (snapshot.empty) {
-            console.log("La colección de clientes está vacía. No se agregarán datos de ejemplo.");
-            // Se ha desactivado la generación de datos de ejemplo para clientes.
-            // console.log("Customer collection is empty. Seeding with sample data...");
-            // for (const customerData of sampleCustomers) {
-            //     await addDoc(customersCollection, customerData);
-            // }
-            // console.log(`${sampleCustomers.length} sample customers created successfully.`);
-        }
+      console.log("Customer collection is empty. Seeding with sample data...");
+      for (const customerData of sampleCustomers) {
+          await addDoc(customersCollection, customerData);
+      }
+      console.log(`${sampleCustomers.length} sample customers created successfully.`);
+    }
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : (error as any)?.message || String(error);
         if (errorMessage.includes('client is offline')) {
@@ -247,13 +245,11 @@ export const seedReservations = async () => {
     const snapshot = await getDocs(reservationsCollection);
 
     if (snapshot.empty) {
-      console.log("La colección de reservas está vacía. No se agregarán datos de ejemplo según la configuración.");
-      // Se ha desactivado la generación de datos de ejemplo.
-      // console.log("Colección de reservas vacía. Semeando 10 registros de ejemplo...");
-      // for (const reservationData of sampleReservations) {
-      //   await addDoc(reservationsCollection, reservationData);
-      // }
-      // console.log("10 reservas de ejemplo creadas exitosamente.");
+      console.log("Colección de reservas vacía. Semeando 10 registros de ejemplo...");
+      for (const reservationData of sampleReservations) {
+        await addDoc(reservationsCollection, reservationData);
+      }
+      console.log("10 reservas de ejemplo creadas exitosamente.");
     }
   } catch (error) {
       const errorMessage = error instanceof Error ? error.message : (error as any)?.message || String(error);

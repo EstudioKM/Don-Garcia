@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { auth } from '../firebase';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword } from 'firebase/auth';
 
 interface LoginProps {
   onLoginSuccess: () => void;
@@ -13,7 +13,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, onClose }) => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
@@ -28,8 +28,23 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, onClose }) => {
       } else if (err.code === 'auth/too-many-requests') {
         setError('Demasiados intentos fallidos. Por favor, intentá más tarde.');
       } else {
-        setError('Error de conexión. Verificá tu configuración de Firebase.');
+        setError('Error de conexión. Verificá tu configuración de Firebase o habilitá Email/Password en Firebase Console.');
       }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+      onLoginSuccess();
+    } catch (err: any) {
+      console.error('Google login error:', err);
+      setError('Error al iniciar sesión con Google.');
     } finally {
       setLoading(false);
     }
@@ -43,7 +58,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, onClose }) => {
           <p className="text-stone-500 text-xs uppercase tracking-[0.3em]">Don García</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleEmailLogin} className="space-y-6">
           <div>
             <label className="block text-[10px] uppercase tracking-widest text-stone-400 font-bold mb-2">Email</label>
             <input
@@ -80,7 +95,15 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, onClose }) => {
               disabled={loading}
               className={`w-full bg-gold text-white py-4 font-black uppercase tracking-[0.3em] text-xs hover:bg-white hover:text-black transition-all shadow-lg ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              {loading ? 'Iniciando...' : 'Entrar'}
+              {loading ? 'Iniciando...' : 'Entrar con Email'}
+            </button>
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              disabled={loading}
+              className={`w-full bg-white text-black py-4 font-black uppercase tracking-[0.2em] text-xs hover:bg-stone-200 transition-all shadow-lg ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              Continuar con Google
             </button>
             <button
               type="button"
@@ -94,7 +117,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, onClose }) => {
         
         <div className="mt-12 text-center">
           <p className="text-stone-600 text-[9px] uppercase tracking-widest leading-relaxed">
-            Este panel es de uso exclusivo para el personal autorizado de Don García.
+            Este panel es de uso exclusivo para el personal autorizado de Don García. Si usás Email, debes crearlo primero en Firebase Console.
           </p>
         </div>
       </div>

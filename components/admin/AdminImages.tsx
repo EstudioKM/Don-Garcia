@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { RestaurantSettings, WebImages } from '../../types';
 import { produce } from 'immer';
-import { Image as ImageIcon, Upload, X, Globe } from 'lucide-react';
+import { Image as ImageIcon, Upload, X, Globe, Loader2 } from 'lucide-react';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { storage } from '../../firebase';
 
 interface AdminImagesProps {
   settings: RestaurantSettings;
@@ -10,6 +12,7 @@ interface AdminImagesProps {
 
 const AdminImages: React.FC<AdminImagesProps> = ({ settings, setSettings }) => {
   const webImages = settings.webImages || {};
+  const [uploadingField, setUploadingField] = useState<keyof WebImages | null>(null);
 
   const handleImageChange = (field: keyof WebImages, value: string) => {
     setSettings(produce(settings, draft => {
@@ -18,14 +21,16 @@ const AdminImages: React.FC<AdminImagesProps> = ({ settings, setSettings }) => {
     }));
   };
 
-  const handleFileUpload = (field: keyof WebImages, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (field: keyof WebImages, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    setUploadingField(field);
 
     const reader = new FileReader();
     reader.onloadend = () => {
       const img = new Image();
-      img.onload = () => {
+      img.onload = async () => {
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
@@ -49,7 +54,18 @@ const AdminImages: React.FC<AdminImagesProps> = ({ settings, setSettings }) => {
         if (ctx) {
           ctx.drawImage(img, 0, 0, width, height);
           const compressedBase64 = canvas.toDataURL('image/jpeg', 0.85);
-          handleImageChange(field, compressedBase64);
+
+          try {
+            const storageRef = ref(storage, `web-images/${field}-${Date.now()}.jpg`);
+            await uploadString(storageRef, compressedBase64, 'data_url');
+            const downloadURL = await getDownloadURL(storageRef);
+            handleImageChange(field, downloadURL);
+          } catch (error) {
+            console.error("Error uploading image:", error);
+            alert("Error al subir la imagen");
+          } finally {
+            setUploadingField(null);
+          }
         }
       };
       img.src = reader.result as string;
@@ -100,7 +116,11 @@ const AdminImages: React.FC<AdminImagesProps> = ({ settings, setSettings }) => {
 
             <div className="flex gap-4 items-start">
               <div className="relative w-24 h-24 rounded-xl bg-stone-950 border border-stone-800 overflow-hidden flex-shrink-0 group">
-                {webImages[field.id] ? (
+                {uploadingField === field.id ? (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-gold bg-stone-900 gap-1 animate-pulse">
+                    <Loader2 size={24} className="animate-spin" />
+                  </div>
+                ) : webImages[field.id] ? (
                   <img 
                     src={webImages[field.id]} 
                     alt={field.label} 
@@ -119,6 +139,7 @@ const AdminImages: React.FC<AdminImagesProps> = ({ settings, setSettings }) => {
                     className="hidden" 
                     accept="image/*"
                     onChange={e => handleFileUpload(field.id, e)}
+                    disabled={uploadingField === field.id}
                   />
                 </label>
               </div>

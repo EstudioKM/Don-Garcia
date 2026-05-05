@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Layout, Environment, Table } from '../../types';
 import { produce } from 'immer';
-import { Plus, Trash2, Calculator, X, Link, Image as ImageIcon, Upload, ChevronDown, ChevronUp, Download } from 'lucide-react';
+import { Plus, Trash2, Calculator, X, Link, Image as ImageIcon, Upload, ChevronDown, ChevronUp, Download, Loader2 } from 'lucide-react';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { storage } from '../../firebase';
 
 interface AdminLayoutProps {
   layout: Layout | null;
@@ -13,6 +15,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ layout, setLayout }) => {
   const [editingTableJoin, setEditingTableJoin] = useState<{ envIndex: number, tableIndex: number } | null>(null);
 
   const [expandedEnvs, setExpandedEnvs] = useState<Record<number, boolean>>({});
+  const [uploadingEnv, setUploadingEnv] = useState<number | null>(null);
 
   const toggleEnvExpand = (envIndex: number) => {
     setExpandedEnvs(prev => ({
@@ -29,14 +32,17 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ layout, setLayout }) => {
     setLayout(nextState);
   };
 
-  const handleImageUpload = (envIndex: number, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (envIndex: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !layout) return;
+
+    setUploadingEnv(envIndex);
+    const env = layout.environments[envIndex];
 
     const reader = new FileReader();
     reader.onloadend = () => {
       const img = new Image();
-      img.onload = () => {
+      img.onload = async () => {
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
@@ -60,7 +66,18 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ layout, setLayout }) => {
         if (ctx) {
           ctx.drawImage(img, 0, 0, width, height);
           const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
-          handleEnvironmentChange(envIndex, 'image', compressedBase64);
+          
+          try {
+            const storageRef = ref(storage, `environments/${env.id}-${Date.now()}.jpg`);
+            await uploadString(storageRef, compressedBase64, 'data_url');
+            const downloadURL = await getDownloadURL(storageRef);
+            handleEnvironmentChange(envIndex, 'image', downloadURL);
+          } catch (error) {
+            console.error("Error uploading image:", error);
+            alert("Error al subir la imagen");
+          } finally {
+            setUploadingEnv(null);
+          }
         }
       };
       img.src = reader.result as string;
@@ -309,7 +326,12 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ layout, setLayout }) => {
                         <label className="text-[9px] uppercase tracking-widest text-stone-500 font-bold">Imagen del Ambiente</label>
                         <div className="flex gap-4 items-center">
                           <div className="relative w-24 h-24 rounded-lg bg-stone-950 border border-stone-800 overflow-hidden flex-shrink-0 group/img">
-                            {env.image ? (
+                            {uploadingEnv === envIndex ? (
+                              <div className="w-full h-full flex flex-col items-center justify-center text-gold bg-stone-900 gap-1 animate-pulse">
+                                <Loader2 size={24} className="animate-spin" />
+                                <span className="text-[8px] uppercase tracking-wider text-stone-400">Subiendo...</span>
+                              </div>
+                            ) : env.image ? (
                               <img src={env.image} alt={env.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                             ) : (
                               <div className="w-full h-full flex flex-col items-center justify-center text-stone-700 gap-1 cursor-pointer">
@@ -324,11 +346,12 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ layout, setLayout }) => {
                                 className="hidden" 
                                 accept="image/*"
                                 onChange={e => handleImageUpload(envIndex, e)}
+                                disabled={uploadingEnv === envIndex}
                               />
                             </label>
                           </div>
                           
-                          {env.image && (
+                          {env.image && !uploadingEnv && (
                             <button
                               onClick={() => {
                                 const a = document.createElement('a');

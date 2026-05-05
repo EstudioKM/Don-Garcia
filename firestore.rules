@@ -60,7 +60,7 @@ service cloud.firestore {
       return isAuthenticated() &&
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-         (request.auth.token.email == "holaestudiokm@gmail.com" && request.auth.token.email_verified == true));
+         request.auth.token.email == "holaestudiokm@gmail.com");
     }
 
     function hasRequiredFields(fields) {
@@ -123,9 +123,29 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Default deny
-    match /{path=**} {
-      allow read, write: if false;
+    match /configuration/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
+
+    match /customers/{customerId} {
+      allow read: if isAdmin();
+      allow create: if true;
+      allow update, delete: if isAdmin();
+    }
+
+    match /restaurants/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /orders/{orderId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /tableSessions/{sessionId} {
+      allow read, write: if isAdmin();
+    }
+
   }
 }

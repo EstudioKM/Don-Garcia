@@ -248,6 +248,23 @@ const ReservationModal: React.FC<ReservationModalProps> = ({ isOpen, onClose, re
         return;
     }
 
+    const reservationsForShift = modalReservations.filter(r => {
+        if (r.id === formData.id) return false;
+        if (r.status === 'cancelada') return false;
+        const hour = parseInt(r.time.split(':')[0]);
+        return shiftKey === 'mediodia' ? hour < 16 : hour >= 16;
+    });
+
+    const guestsInSelectedEnvForShift = reservationsForShift
+        .filter(r => r.environmentId === formData.environmentId)
+        .reduce((sum, r) => sum + Number(r.guests), 0);
+
+    if (guestsInSelectedEnvForShift + Number(formData.guests) > selectedEnv.maxCapacity) {
+        setCapacityError(`Disculpe, no hay suficiente disponibilidad en "${selectedEnv.name}" para la cantidad de personas seleccionada en este turno.`);
+        setIsSubmitting(false);
+        return;
+    }
+
     // --- Verificación de Capacidad y Mesas ---
     let finalTableIds = formData.tableIds || [];
     let finalTableName = formData.tableName || null;
@@ -289,22 +306,6 @@ const ReservationModal: React.FC<ReservationModalProps> = ({ isOpen, onClose, re
 
         if (Number(formData.guests) > selectedTablesCapacity) {
             setCapacityError(`Las mesas seleccionadas tienen una capacidad máxima de ${selectedTablesCapacity} personas.`);
-            setIsSubmitting(false);
-            return;
-        }
-
-        // Check environment capacity
-        const currentGuestsInEnv = relevantReservations.reduce((sum, res) => {
-            const resStart = parseInt(res.time.split(':')[0]) * 60 + parseInt(res.time.split(':')[1]);
-            const resEnd = resStart + (res.duration || 120);
-            if (reqStart < resEnd && reqEnd > resStart) {
-                return sum + res.guests;
-            }
-            return sum;
-        }, 0);
-
-        if (currentGuestsInEnv + Number(formData.guests) > selectedEnv.maxCapacity) {
-            setCapacityError(`La capacidad máxima del ambiente "${selectedEnv.name}" ha sido alcanzada para ese horario.`);
             setIsSubmitting(false);
             return;
         }
