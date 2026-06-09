@@ -4,6 +4,7 @@ import { produce } from 'immer';
 import { Image as ImageIcon, Upload, X, Globe, Loader2 } from 'lucide-react';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { storage } from '../../firebase';
+import { saveRestaurantSettings } from '../../services/settingsRepository';
 
 interface AdminImagesProps {
   settings: RestaurantSettings;
@@ -59,7 +60,12 @@ const AdminImages: React.FC<AdminImagesProps> = ({ settings, setSettings }) => {
             const storageRef = ref(storage, `web-images/${field}-${Date.now()}.jpg`);
             await uploadString(storageRef, compressedBase64, 'data_url');
             const downloadURL = await getDownloadURL(storageRef);
-            handleImageChange(field, downloadURL);
+            const nextSettings: RestaurantSettings = {
+              ...settings,
+              webImages: { ...(settings.webImages || {}), [field]: downloadURL },
+            };
+            setSettings(nextSettings);
+            await saveRestaurantSettings(nextSettings);
           } catch (error) {
             console.error("Error uploading image:", error);
             alert("Error al subir la imagen");

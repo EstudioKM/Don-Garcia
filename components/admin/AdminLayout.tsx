@@ -4,6 +4,7 @@ import { produce } from 'immer';
 import { Plus, Trash2, Calculator, X, Link, Image as ImageIcon, Upload, ChevronDown, ChevronUp, Download, Loader2 } from 'lucide-react';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { storage } from '../../firebase';
+import { saveLayout } from '../../services/layoutRepository';
 
 interface AdminLayoutProps {
   layout: Layout | null;
@@ -71,7 +72,14 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ layout, setLayout }) => {
             const storageRef = ref(storage, `environments/${env.id}-${Date.now()}.jpg`);
             await uploadString(storageRef, compressedBase64, 'data_url');
             const downloadURL = await getDownloadURL(storageRef);
-            handleEnvironmentChange(envIndex, 'image', downloadURL);
+            const nextState: Layout = {
+              ...layout,
+              environments: layout.environments.map((e, i) =>
+                i === envIndex ? { ...e, image: downloadURL } : e
+              ),
+            };
+            setLayout(nextState);
+            await saveLayout(nextState);
           } catch (error) {
             console.error("Error uploading image:", error);
             alert("Error al subir la imagen");
